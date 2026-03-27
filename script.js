@@ -151,8 +151,8 @@ function normalize(str) {
   return str.toLowerCase().replace(/\s+/g, "");
 }
 
-function doSearch() {
-  const raw = document.getElementById("searchInput").value.trim();
+function doSearch(forceName) {
+  const raw = forceName ?? document.getElementById("searchInput").value.trim();
   const q = normalize(raw);
   clearHighlights();
 
@@ -163,14 +163,11 @@ function doSearch() {
   document.getElementById("btnClear").style.display = raw ? "block" : "none";
   suggestionsBox.style.display = "none";
 
-  if (!q) {
-    resultCard.style.display = "none";
-    return;
-  }
+  if (!q) { resultCard.style.display = "none"; return; }
 
   const matches = Object.values(seatOf).filter((stu) => {
-    const name = normalize(stu.name);
-    return name.includes(q) || q.includes(name);
+    const n = normalize(stu.name);
+    return n.includes(q) || q.includes(n);
   });
 
   resultCard.style.display = "block";
@@ -192,87 +189,85 @@ function doSearch() {
   deskEl?.classList.add("glowing");
 
   if (seatEl)
-    setTimeout(
-      () => seatEl.scrollIntoView({ behavior: "smooth", block: "center" }),
-      120,
-    );
+    setTimeout(() => seatEl.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
 
   resTitle.textContent = m.name;
   resBody.innerHTML = `
-      Class: <strong>${m.class}</strong> &nbsp;|&nbsp; Roll: <strong>${m.roll}</strong><br>
-      Row&nbsp;${m.row} &nbsp;|&nbsp; Column&nbsp;${m.col} &nbsp;|&nbsp; ${cap(m.side)}&nbsp;Seat
-    `;
+    Class: <strong>${m.class}</strong> &nbsp;|&nbsp; Roll: <strong>${m.roll}</strong><br>
+    Row&nbsp;${m.row} &nbsp;|&nbsp; Column&nbsp;${m.col} &nbsp;|&nbsp; ${cap(m.side)}&nbsp;Seat
+  `;
 }
 
 /* ── AUTOCOMPLETE ── */
 const suggestionsBox = document.getElementById("suggestions");
-let activeIndex = -1;
+let activeIndex = 0;
+let currentMatches = [];
+
+function renderSuggestions() {
+  suggestionsBox.innerHTML = currentMatches
+    .map((m, i) => `
+      <div class="suggestion-item${i === activeIndex ? " active" : ""}" data-index="${i}">
+        ${m.name}
+        <div class="suggestion-roll">Class: ${m.class}</div>
+      </div>`)
+    .join("");
+  suggestionsBox.style.display = currentMatches.length ? "block" : "none";
+}
 
 document.getElementById("searchInput").addEventListener("input", function () {
   const query = normalize(this.value);
   if (!query) {
     suggestionsBox.style.display = "none";
+    currentMatches = [];
+    activeIndex = 0;
     return;
   }
 
-  const matches = Object.values(seatOf)
+  currentMatches = Object.values(seatOf)
     .filter((stu) => normalize(stu.name).includes(query))
+    .sort((a, b) => {
+      const an = normalize(a.name);
+      const bn = normalize(b.name);
+      const aStarts = an.startsWith(query) ? 0 : 1;
+      const bStarts = bn.startsWith(query) ? 0 : 1;
+      return aStarts - bStarts;
+    })
     .slice(0, 6);
 
-  if (!matches.length) {
-    suggestionsBox.style.display = "none";
-    return;
-  }
-
-  suggestionsBox.innerHTML = matches
-    .map(
-      (m, i) => `
-      <div class="suggestion-item" data-index="${i}">
-        ${m.name}
-        <div class="suggestion-roll">Class: ${m.class}</div>
-      </div>`,
-    )
-    .join("");
-  suggestionsBox.style.display = "block";
-  activeIndex = -1;
+  activeIndex = 0;
+  renderSuggestions();
 });
 
 suggestionsBox.addEventListener("click", function (e) {
   const item = e.target.closest(".suggestion-item");
   if (!item) return;
-  const idx = +item.dataset.index;
-  const q = normalize(document.getElementById("searchInput").value);
-  const matches = Object.values(seatOf).filter((stu) =>
-    normalize(stu.name).includes(q),
-  );
-  document.getElementById("searchInput").value = matches[idx].name;
-  suggestionsBox.style.display = "none";
-  doSearch();
+  selectSuggestion(+item.dataset.index);
 });
 
-document
-  .getElementById("searchInput")
-  .addEventListener("keydown", function (e) {
-    const items = document.querySelectorAll(".suggestion-item");
-    if (e.key === "Enter") {
-      if (activeIndex >= 0 && items.length) items[activeIndex].click();
-      else if (items.length) items[0].click();
-      else doSearch();
-      return;
-    }
-    if (e.key === "Escape") {
-      clearSearch();
-      return;
-    }
-    if (!items.length) return;
-    if (e.key === "ArrowDown") activeIndex = (activeIndex + 1) % items.length;
-    else if (e.key === "ArrowUp")
-      activeIndex = (activeIndex - 1 + items.length) % items.length;
-    else return;
-    items.forEach((i) => i.classList.remove("active"));
-    items[activeIndex].classList.add("active");
+function selectSuggestion(idx) {
+  if (!currentMatches[idx]) return;
+  document.getElementById("searchInput").value = currentMatches[idx].name;
+  suggestionsBox.style.display = "none";
+  doSearch(currentMatches[idx].name);
+}
+
+document.getElementById("searchInput").addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
     e.preventDefault();
-  });
+    currentMatches.length ? selectSuggestion(activeIndex) : doSearch();
+    return;
+  }
+  if (e.key === "Escape") { clearSearch(); return; }
+  if (!currentMatches.length) return;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    activeIndex = (activeIndex + 1) % currentMatches.length;
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    activeIndex = (activeIndex - 1 + currentMatches.length) % currentMatches.length;
+  }
+  renderSuggestions();
+});
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".search-wrap")) suggestionsBox.style.display = "none";
@@ -284,16 +279,14 @@ function clearSearch() {
   document.getElementById("btnClear").style.display = "none";
   document.getElementById("resultCard").style.display = "none";
   suggestionsBox.style.display = "none";
+  currentMatches = [];
+  activeIndex = 0;
   clearHighlights();
 }
 
 function clearHighlights() {
-  document
-    .querySelectorAll(".seat.lit")
-    .forEach((el) => el.classList.remove("lit"));
-  document
-    .querySelectorAll(".desk.glowing")
-    .forEach((el) => el.classList.remove("glowing"));
+  document.querySelectorAll(".seat.lit").forEach((el) => el.classList.remove("lit"));
+  document.querySelectorAll(".desk.glowing").forEach((el) => el.classList.remove("glowing"));
 }
 
 function cap(s) {
