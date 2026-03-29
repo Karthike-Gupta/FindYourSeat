@@ -8,13 +8,23 @@
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./style.css" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <link rel="manifest" href="./manifest.json" />
   </head>
   <body>
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <p>Loading seating data…</p>
+      </div>
+    </div>
+
     <div class="container">
       <!-- HEADER -->
       <header>
-        <div class="badge">🎓 Exam Hall System</div>
+        <div class="badge">Exam Hall System</div>
         <h1>Find Your Seat</h1>
         <p class="subtitle">
           Type your name below — your assigned seat will light up on the
@@ -55,29 +65,14 @@
 
       <!-- CLASSROOM -->
       <div class="classroom-card">
-        <div class="card-label">📐 Classroom — Top-Down View</div>
+        <div class="card-label" id="roomLabel">
+          Classroom — Top-Down View
+        </div>
 
-        <!--
-      STICKY HEADER
-      ─────────────
-      position:sticky keeps this block pinned to the top of the
-      viewport the moment the user scrolls past it.
-
-      The blackboard and door badge stay visible at all times,
-      giving students a permanent spatial reference while they
-      look through the desk rows.
-
-      JS adds .is-stuck (via IntersectionObserver on a 1px
-      sentinel above this element) so CSS can apply a shadow
-      and flush border-radius when the header is actually docked.
-    -->
         <div class="sticky-header" id="stickyHeader">
           <div class="blackboard">
             <div class="chalk-line"></div>
             <span class="bb-text">✦ Blackboard — Front of Class ✦</span>
-          </div>
-          <div class="front-row">
-            <div class="door-badge">🚪 Entry Door</div>
           </div>
         </div>
 
@@ -107,7 +102,7 @@
                   <span>Your Seat</span>
                 </div>
               </div>
-              <div class="compass">⬆ Front &nbsp;|&nbsp; Door → Top Right</div>
+              <div class="compass">⬆ Front</div>
             </div>
           </div>
         </div>
@@ -118,6 +113,7 @@
         seat
       </footer>
     </div>
+
     <script src="./script.js"></script>
   </body>
 </html>
