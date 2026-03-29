@@ -1,0 +1,9 @@
+{
+  "name": "Exam Seat Finder",
+  "short_name": "SeatFinder",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": []
+}
