@@ -1,106 +1,183 @@
 /* =========================================================
-     STUDENTS DATA
-     ─────────────
-     Edit this array to update names / roll numbers.
-     Position 0 = S1, position 1 = S2, … position 59 = S60.
+   CONFIGURATION
+   ─────────────
+   Step 1: Open your Google Sheet
+   Step 2: File → Share → Publish to web
+   Step 3: Choose your sheet → CSV → Publish
+   Step 4: Copy the URL and paste it below
+   ========================================================= */
+const CONFIG = {
+  SHEET_URL:
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQFIUbBjF4frO6966ELY0jrNIMpn49GIkjGrxXurFomkOMqEcWYE8wwNAkTRsr5qq9RItkhNcqM1k9V/pub?output=csv",
+  COLS: 3, // number of seat columns per room
+};
 
-     Seating order:
-       S1 –S10  → Col 3, RIGHT seat, Row 1–10
-       S11–S20  → Col 3, LEFT  seat, Row 1–10
-       S21–S30  → Col 2, RIGHT seat, Row 1–10
-       S31–S40  → Col 2, LEFT  seat, Row 1–10
-       S41–S50  → Col 1, RIGHT seat, Row 1–10
-       S51–S60  → Col 1, LEFT  seat, Row 1–10
-  ========================================================= */
-const STUDENTS = [
-  { name: "Abhay Pratap", roll: "123401", class: "BBA" },
-  { name: "Aditya Singh", roll: "123402", class: "BBA" },
-  { name: "Anshika Singh", roll: "123403", class: "BBA" },
-  { name: "Anupriya Pal", roll: "123404", class: "BBA" },
-  { name: "Aryan Gautam", roll: "123405", class: "BBA" },
-  { name: "Chhavi Singh", roll: "123406", class: "BBA" },
-  { name: "Devansh Srivastava", roll: "123407", class: "BBA" },
-  { name: "Dhananjay Mishra", roll: "123408", class: "BBA" },
-  { name: "Dipika Kumari", roll: "123409", class: "BBA" },
-  { name: "Dishika Sachdeva", roll: "123410", class: "BBA" },
-  { name: "Divyanshi Pandey", roll: "123411", class: "BBA" },
-  { name: "Harshit Mishra", roll: "123412", class: "BBA" },
-  { name: "Harshit Tiwari", roll: "123413", class: "BBA" },
-  { name: "Karthike Gupta", roll: "123414", class: "BBA" },
-  { name: "Km Swati Pratap", roll: "123415", class: "BBA" },
-  { name: "Km Smita Singh", roll: "123416", class: "BBA" },
-  { name: "Lavlesh Kumar", roll: "123417", class: "BBA" },
-  { name: "Mahi Chaubey", roll: "123418", class: "BBA" },
-  { name: "Navin Shukla", roll: "123419", class: "BBA" },
-  { name: "Nice R. Nirala", roll: "123420", class: "BBA" },
-  { name: "Nitin Gautam", roll: "123421", class: "BBA" },
-  { name: "Palak Rathour", roll: "123422", class: "BBA" },
-  { name: "Pratulya Pandey", roll: "123423", class: "BBA" },
-  { name: "Priyanshi Yadav", roll: "123424", class: "BBA" },
-  { name: "Rajbeer Kaur", roll: "123425", class: "BBA" },
-  { name: "Riddhi Singh", roll: "123426", class: "BBA" },
-  { name: "Sakshi Agarwal", roll: "123427", class: "BBA" },
-  { name: "Sanchita Dwivedi", roll: "123428", class: "BBA" },
-  { name: "Satyajeet Tiwari", roll: "123429", class: "BBA" },
-  { name: "Shritika", roll: "123430", class: "BBA" },
-  { name: "Simran", roll: "123431", class: "BBA" },
-  { name: "Srishti", roll: "123432", class: "BBA" },
-  { name: "Surya Pratap", roll: "123433", class: "BBA" },
-  { name: "Swechchha Singh", roll: "123434", class: "BBA" },
-  { name: "Ujjwal Shukla", roll: "123435", class: "BBA" },
-  { name: "Ummey Abiha", roll: "123436", class: "BBA" },
-  { name: "Vanshika Shukla", roll: "123437", class: "BBA" },
-  { name: "Vanshika Srivastava", roll: "123438", class: "BBA" },
-  { name: "Vineet Khakarodiya", roll: "123439", class: "BBA" },
-];
+/*
+  ── EXPECTED GOOGLE SHEET COLUMNS (Row 1 = Headers) ──────
+  A: Name       → Student full name
+  B: Roll       → Roll number
+  C: Class      → e.g. BBA I, BCOM II, B Pharm III …
+  D: Room       → Room number / name  e.g. Room 1, Hall A
+  E: Row        → Seat row number (1, 2, 3 …)
+  F: Col        → Seat column (1, 2, or 3)
+  G: Side       → left  or  right
+  ─────────────────────────────────────────────────────────
+*/
 
-/* ── CONFIG ── */
-const ROWS = 10,
-  COLS = 3;
+/* ── CACHE CONFIG ── */
+// Fix 3: Declare CACHE_KEY and CACHE_TTL at the top so forceRefresh()
+// can safely reference them without hitting the temporal dead zone.
+const CACHE_KEY = "examSeats_cache";
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
-const GROUPS = [
-  { col: 3, side: "right" },
-  { col: 3, side: "left" },
-  { col: 2, side: "right" },
-  { col: 2, side: "left" },
-  { col: 1, side: "right" },
-  { col: 1, side: "left" },
-];
+/* ── STATE ── */
+let STUDENTS    = [];
+let studentAt   = {}; // "room-row-col-side" → student  (unique per seat)
+let roomsData   = {}; // room → [students]
+let lastMatches = []; // kept at module scope (not on window)
 
-/* ── MAPS ── */
-const seatOf = {};
-const studentAt = {};
+/* ═══════════════════════════════════════════════════════
+   INIT — entry point
+   Fix 1: Only ONE init() declaration (removed the old duplicate).
+   Fix 2: init() is called at the very bottom of the file.
+   ═══════════════════════════════════════════════════════ */
+async function init() {
+  showLoading(true);
+  try {
+    // Try cache first
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { timestamp, data } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_TTL) {
+        STUDENTS = data; // use cached data — instant load
+        buildMaps();
+        buildClassroom(null);
+        showLoading(false);
+        return;
+      }
+    }
+    // Cache expired or missing — fetch fresh from Google Sheets
+    STUDENTS = await fetchStudents();
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ timestamp: Date.now(), data: STUDENTS })
+    );
+    buildMaps();
+    buildClassroom(null);
+    showLoading(false);
+  } catch (err) {
+    showLoading(false);
+    showFetchError(err);
+  }
+}
 
-STUDENTS.forEach((student, i) => {
-  const g = GROUPS[Math.floor(i / 10)];
-  const row = (i % 10) + 1;
-  const info = { row, col: g.col, side: g.side, ...student };
-  seatOf[student.name.toLowerCase()] = info;
-  studentAt[`${row}-${g.col}-${g.side}`] = student;
-});
+/* ── FETCH FROM GOOGLE SHEETS ── */
+async function fetchStudents() {
+  const res = await fetch(CONFIG.SHEET_URL);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const csv = await res.text();
+  return parseCSV(csv);
+}
 
-/* ── BUILD CLASSROOM ── */
-function buildClassroom() {
-  const rowNums = document.getElementById("rowNums");
-  const deskRows = document.getElementById("deskRows");
+/* ── CSV PARSER (handles quoted fields) ── */
+function parseCSV(csv) {
+  const lines = csv.trim().split("\n");
+  if (lines.length < 2) return [];
 
-  for (let r = 1; r <= ROWS; r++) {
+  return lines
+    .slice(1) // skip header row
+    .map((line) => {
+      const cols = splitCSVLine(line);
+      const name = cols[0]?.trim();
+      const row  = parseInt(cols[4]);
+      const col  = parseInt(cols[5]);
+      const side = cols[6]?.trim().toLowerCase();
+
+      if (!name || isNaN(row) || isNaN(col) || !side) return null;
+
+      return {
+        name,
+        roll : cols[1]?.trim() || "—",
+        class: cols[2]?.trim() || "—",
+        room : cols[3]?.trim() || "—",
+        row,
+        col,
+        side,
+      };
+    })
+    .filter(Boolean);
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = "", inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      result.push(cur); cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+/* ── BUILD LOOKUP MAPS ── */
+function buildMaps() {
+  studentAt = {};
+  roomsData = {};
+
+  STUDENTS.forEach((s) => {
+    const key = `${s.room}-${s.row}-${s.col}-${s.side}`;
+    studentAt[key] = s;
+
+    if (!roomsData[s.room]) roomsData[s.room] = [];
+    roomsData[s.room].push(s);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   CLASSROOM BUILDER
+   ═══════════════════════════════════════════════════════ */
+function buildClassroom(roomName) {
+  const rowNums   = document.getElementById("rowNums");
+  const deskRows  = document.getElementById("deskRows");
+  const roomLabel = document.getElementById("roomLabel");
+
+  rowNums.innerHTML  = "";
+  deskRows.innerHTML = "";
+
+  const students = roomName ? (roomsData[roomName] || []) : [];
+  // Use reduce() — safe with large datasets (Math.max(...array) can crash)
+  const maxRow = students.length
+    ? students.reduce((max, s) => (s.row > max ? s.row : max), 0)
+    : 10;
+
+  roomLabel.textContent = roomName
+    ? `Room: ${roomName}`
+    : "Classroom — Top-Down View";
+
+  for (let r = 1; r <= maxRow; r++) {
     const rn = document.createElement("div");
-    rn.className = "rnum";
+    rn.className   = "rnum";
     rn.textContent = `R${r}`;
     rowNums.appendChild(rn);
 
     const rowDiv = document.createElement("div");
     rowDiv.className = "desk-row";
 
-    for (let c = 1; c <= COLS; c++) {
-      const left = studentAt[`${r}-${c}-left`] || null;
-      const right = studentAt[`${r}-${c}-right`] || null;
+    for (let c = 1; c <= CONFIG.COLS; c++) {
+      const left  = roomName ? (studentAt[`${roomName}-${r}-${c}-left`]  || null) : null;
+      const right = roomName ? (studentAt[`${roomName}-${r}-${c}-right`] || null) : null;
 
       const desk = document.createElement("div");
       desk.className = "desk";
-      desk.id = `desk-${r}-${c}`;
-      desk.appendChild(mkSeat(r, c, "left", left));
+      desk.id        = `desk-${r}-${c}`;
+      desk.appendChild(mkSeat(r, c, "left",  left));
       desk.appendChild(mkSeat(r, c, "right", right));
       rowDiv.appendChild(desk);
     }
@@ -111,18 +188,18 @@ function buildClassroom() {
 function mkSeat(r, c, side, student) {
   const el = document.createElement("div");
   el.className = `seat seat-${side}`;
-  el.id = `seat-${r}-${c}-${side}`;
+  el.id        = `seat-${r}-${c}-${side}`;
 
   const badge = document.createElement("div");
-  badge.className = "seat-info-badge";
+  badge.className   = "seat-info-badge";
   badge.textContent = `R${r} · C${c}`;
 
   const nameEl = document.createElement("div");
-  nameEl.className = "seat-name";
+  nameEl.className   = "seat-name";
   nameEl.textContent = student ? student.name : "";
 
   const classEl = document.createElement("div");
-  classEl.className = "seat-class";
+  classEl.className   = "seat-class";
   classEl.textContent = student ? student.class : "";
 
   el.appendChild(badge);
@@ -131,85 +208,151 @@ function mkSeat(r, c, side, student) {
   return el;
 }
 
-/* ── STICKY HEADER — is-stuck detection ── */
+/* ── STICKY HEADER ── */
 const stickyHeader = document.getElementById("stickyHeader");
-
-// Tiny 1px sentinel inserted just before the sticky header.
-// When it leaves the viewport, the header is "stuck".
 const sentinel = document.createElement("div");
 sentinel.style.cssText =
   "height:1px;margin-bottom:-1px;pointer-events:none;visibility:hidden;";
 stickyHeader.parentElement.insertBefore(sentinel, stickyHeader);
 
 new IntersectionObserver(
-  ([entry]) => stickyHeader.classList.toggle("is-stuck", !entry.isIntersecting),
-  { threshold: 1.0 },
+  ([entry]) =>
+    stickyHeader.classList.toggle("is-stuck", !entry.isIntersecting),
+  { threshold: 1.0 }
 ).observe(sentinel);
 
-/* ── SEARCH ── */
+/* ═══════════════════════════════════════════════════════
+   SEARCH
+   ═══════════════════════════════════════════════════════ */
+
+/* ── HTML SANITIZER — prevents XSS from sheet data or user input ── */
+function sanitize(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function normalize(str) {
   return str.toLowerCase().replace(/\s+/g, "");
 }
 
 function doSearch(forceName) {
   const raw = forceName ?? document.getElementById("searchInput").value.trim();
-  const q = normalize(raw);
+  const q   = normalize(raw);
   clearHighlights();
 
   const resultCard = document.getElementById("resultCard");
-  const resTitle = document.getElementById("resTitle");
-  const resBody = document.getElementById("resBody");
+  const resTitle   = document.getElementById("resTitle");
+  const resBody    = document.getElementById("resBody");
 
   document.getElementById("btnClear").style.display = raw ? "block" : "none";
   suggestionsBox.style.display = "none";
 
   if (!q) { resultCard.style.display = "none"; return; }
 
-  const matches = Object.values(seatOf).filter((stu) => {
+  const matches = STUDENTS.filter((stu) => {
     const n = normalize(stu.name);
     return n.includes(q) || q.includes(n);
   });
 
   resultCard.style.display = "block";
-  resultCard.className = "";
+  resultCard.className     = "";
 
   if (!matches.length) {
     resultCard.className = "error";
     resTitle.textContent = "Not Found";
-    resBody.innerHTML = `No match for "<strong>${raw}</strong>"`;
+    resBody.innerHTML    = `No match for "<strong>${sanitize(raw)}</strong>". Check spelling and try again.`;
     return;
   }
 
-  const m = matches[0];
+  if (matches.length > 1) {
+    resultCard.className = "multi";
+    resTitle.textContent = `${matches.length} students found`;
+    resBody.innerHTML    = matches
+      .map(
+        (m, i) => `
+      <div class="multi-result" onclick="selectMatch(${i})">
+        <strong>${sanitize(m.name)}</strong>
+        <span class="multi-class">${sanitize(m.class)}</span>
+        <span class="multi-room">Room: ${sanitize(m.room)} &nbsp;|&nbsp; R${m.row} C${m.col} ${sanitize(cap(m.side))}</span>
+      </div>`
+      )
+      .join("");
+
+    lastMatches = matches;
+    matches.forEach((m) => highlightSeat(m));
+    buildClassroom(matches[0].room);
+    return;
+  }
+
+  showResult(matches[0]);
+}
+
+function selectMatch(idx) {
+  const m = lastMatches[idx];
+  if (!m) return;
+  clearHighlights();
+  buildClassroom(m.room);
+  showResult(m);
+}
+
+function showResult(m) {
+  const resultCard = document.getElementById("resultCard");
+  const resTitle   = document.getElementById("resTitle");
+  const resBody    = document.getElementById("resBody");
+
+  resultCard.className = "success";
+  resTitle.textContent = m.name;
+  resBody.innerHTML    = `
+    <div class="res-detail">
+      <span>Class</span><strong>${sanitize(m.class)}</strong>
+    </div>
+    <div class="res-detail">
+      <span>Roll No.</span><strong>${sanitize(m.roll)}</strong>
+    </div>
+    <div class="res-detail">
+      <span>Room</span><strong>${sanitize(m.room)}</strong>
+    </div>
+    <div class="res-detail">
+      <span>Seat</span><strong>Row ${m.row} · Col ${m.col} · ${sanitize(cap(m.side))}</strong>
+    </div>
+  `;
+
+  buildClassroom(m.room);
+  highlightSeat(m);
+}
+
+function highlightSeat(m) {
   const seatEl = document.getElementById(`seat-${m.row}-${m.col}-${m.side}`);
   const deskEl = document.getElementById(`desk-${m.row}-${m.col}`);
 
-  resultCard.className = "success";
   seatEl?.classList.add("lit");
   deskEl?.classList.add("glowing");
 
   if (seatEl)
-    setTimeout(() => seatEl.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
-
-  resTitle.textContent = m.name;
-  resBody.innerHTML = `
-    Class: <strong>${m.class}</strong> &nbsp;|&nbsp; Roll: <strong>${m.roll}</strong><br>
-    Row&nbsp;${m.row} &nbsp;|&nbsp; Column&nbsp;${m.col} &nbsp;|&nbsp; ${cap(m.side)}&nbsp;Seat
-  `;
+    setTimeout(
+      () => seatEl.scrollIntoView({ behavior: "smooth", block: "center" }),
+      150
+    );
 }
 
 /* ── AUTOCOMPLETE ── */
 const suggestionsBox = document.getElementById("suggestions");
-let activeIndex = 0;
+let activeIndex    = 0;
 let currentMatches = [];
 
 function renderSuggestions() {
   suggestionsBox.innerHTML = currentMatches
-    .map((m, i) => `
+    .map(
+      (m, i) => `
       <div class="suggestion-item${i === activeIndex ? " active" : ""}" data-index="${i}">
-        ${m.name}
-        <div class="suggestion-roll">Class: ${m.class}</div>
-      </div>`)
+        ${sanitize(m.name)}
+        <div class="suggestion-roll">${sanitize(m.class)} &nbsp;|&nbsp; ${sanitize(m.room)}</div>
+      </div>`
+    )
     .join("");
   suggestionsBox.style.display = currentMatches.length ? "block" : "none";
 }
@@ -219,17 +362,15 @@ document.getElementById("searchInput").addEventListener("input", function () {
   if (!query) {
     suggestionsBox.style.display = "none";
     currentMatches = [];
-    activeIndex = 0;
+    activeIndex    = 0;
     return;
   }
 
-  currentMatches = Object.values(seatOf)
+  currentMatches = STUDENTS
     .filter((stu) => normalize(stu.name).includes(query))
     .sort((a, b) => {
-      const an = normalize(a.name);
-      const bn = normalize(b.name);
-      const aStarts = an.startsWith(query) ? 0 : 1;
-      const bStarts = bn.startsWith(query) ? 0 : 1;
+      const aStarts = normalize(a.name).startsWith(query) ? 0 : 1;
+      const bStarts = normalize(b.name).startsWith(query) ? 0 : 1;
       return aStarts - bStarts;
     })
     .slice(0, 6);
@@ -276,12 +417,13 @@ document.addEventListener("click", (e) => {
 /* ── HELPERS ── */
 function clearSearch() {
   document.getElementById("searchInput").value = "";
-  document.getElementById("btnClear").style.display = "none";
+  document.getElementById("btnClear").style.display   = "none";
   document.getElementById("resultCard").style.display = "none";
   suggestionsBox.style.display = "none";
   currentMatches = [];
-  activeIndex = 0;
+  activeIndex    = 0;
   clearHighlights();
+  buildClassroom(null);
 }
 
 function clearHighlights() {
@@ -290,8 +432,29 @@ function clearHighlights() {
 }
 
 function cap(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+}
+
+/* ── LOADING STATE ── */
+function showLoading(visible) {
+  document.getElementById("loadingOverlay").style.display = visible ? "flex" : "none";
+}
+
+/* ── FETCH ERROR ── */
+function showFetchError(err) {
+  const resultCard = document.getElementById("resultCard");
+  const resTitle   = document.getElementById("resTitle");
+  const resBody    = document.getElementById("resBody");
+
+  resultCard.style.display = "block";
+  resultCard.className     = "error";
+  resTitle.textContent     = "Could Not Load Data";
+  resBody.innerHTML        = `
+    Please check that the Google Sheet URL is set correctly in <code>script.js</code>
+    and the sheet is published to the web.<br><br>
+    <small style="opacity:0.6">${sanitize(err.message)}</small>
+  `;
 }
 
 /* ── INIT ── */
-buildClassroom();
+init();
