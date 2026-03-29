@@ -13,6 +13,17 @@
     <link rel="manifest" href="./manifest.json" />
   </head>
   <body>
+    <!-- THEME TOGGLE -->
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      title="Toggle day / night mode"
+      aria-label="Toggle day/night mode"
+    >
+      <span class="icon-sun">☀️</span>
+      <span class="icon-moon">🌙</span>
+    </button>
+
     <!-- LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay">
       <div class="loading-box">
@@ -30,17 +41,29 @@
           Type your name below — your assigned seat will light up on the
           classroom map
         </p>
+
+        <!-- ✅ NEW: Refresh button + last-updated label for admin convenience -->
+        <div class="refresh-bar">
+          <button
+            class="btn-refresh"
+            onclick="forceRefresh()"
+            title="Reload data from Google Sheet"
+          >
+            ↺ Refresh Data
+          </button>
+        </div>
       </header>
 
       <!-- SEARCH -->
       <div class="search-card">
         <div class="search-wrap">
           <span class="search-icon">
-            <img
-              src="./images/magnifying-glass-solid.png"
-              alt="Search"
-              class="search-icon-img"
-            />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <path
+                fill="rgb(255, 255, 255)"
+                d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376C296.3 401.1 253.9 416 208 416 93.1 416 0 322.9 0 208S93.1 0 208 0 416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"
+              />
+            </svg>
           </span>
           <input
             type="text"
@@ -65,9 +88,7 @@
 
       <!-- CLASSROOM -->
       <div class="classroom-card">
-        <div class="card-label" id="roomLabel">
-          Classroom — Top-Down View
-        </div>
+        <div class="card-label" id="roomLabel">Classroom — Top-Down View</div>
 
         <div class="sticky-header" id="stickyHeader">
           <div class="blackboard">
@@ -81,12 +102,9 @@
           <div class="inner-min">
             <div class="grid-area">
               <div class="row-nums" id="rowNums"></div>
+
               <div class="desk-grid">
-                <div class="col-heads">
-                  <div class="col-head">← Col 1</div>
-                  <div class="col-head">Col 2</div>
-                  <div class="col-head">Col 3 →</div>
-                </div>
+                <div class="col-heads" id="colHeads"></div>
                 <div class="desk-rows" id="deskRows"></div>
               </div>
             </div>
@@ -94,8 +112,8 @@
             <div class="bottom-row">
               <div class="legend">
                 <div class="legend-item">
-                  <div class="ldot ldot-normal"></div>
-                  <span>Regular Seat</span>
+                  <div class="ldot ldot-joined"></div>
+                  <span>Normal Seat</span>
                 </div>
                 <div class="legend-item">
                   <div class="ldot ldot-lit"></div>
