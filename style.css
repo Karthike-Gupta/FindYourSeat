@@ -30,8 +30,8 @@ html {
   --err-soft: rgba(248, 113, 113, 0.12);
 
   /* Fluid desk height — overridden inline by JS in fixed-size mode */
-  --desk-h: clamp(58px, 10vw, 120px);
-  --seat-name-size: clamp(0.48rem, 1.4vw, 1rem);
+  --desk-h: clamp(64px, 10vw, 96px);
+  --seat-name-size: clamp(0.48rem, 1.4vw, 0.75rem);
   --seat-roll-size: clamp(0.4rem, 1.1vw, 0.85rem);
   --rnum-w: clamp(18px, 3.5vw, 26px);
 }
@@ -153,6 +153,10 @@ html {
 }
 [data-theme="light"] .col-header-wrapper {
   background: var(--surface);
+  box-shadow:
+    0 8px 28px rgba(100, 60, 10, 0.28),
+    0 3px 10px rgba(100, 60, 10, 0.18),
+    0 1px 0px rgba(255, 255, 255, 0.7);
 }
 [data-theme="light"] .col-head {
   color: #6d5a3c;
@@ -161,6 +165,10 @@ html {
 [data-theme="light"] .rnum {
   color: #5048b0;
   background: var(--surface);
+  box-shadow:
+    6px 0 24px rgba(100, 60, 10, 0.28),
+    3px 0 8px rgba(100, 60, 10, 0.18),
+    1px 0 0px rgba(255, 255, 255, 0.7);
 }
 [data-theme="light"] .grid-corner {
   background: var(--surface);
@@ -239,8 +247,10 @@ html {
 [data-theme="light"] .g-seat-tip {
   background: rgba(255, 250, 240, 0.97);
   border-color: rgba(99, 102, 241, 0.32);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
   color: #2d1f7a;
-  box-shadow: 0 4px 16px rgba(140, 100, 40, 0.22);
+  box-shadow: 0 3px 10px rgba(140, 100, 40, 0.22);
 }
 [data-theme="light"] .theme-toggle {
   background: rgba(255, 248, 228, 0.82);
@@ -255,12 +265,12 @@ html {
 
 /* ══════════════════════════════════════════════
    THEME TOGGLE
-   position:fixed — stays visible when page scrolls
+   position:absolute inside header (header is position:relative)
    ══════════════════════════════════════════════ */
 .theme-toggle {
   position: absolute;
-  top: clamp(10px, 2.5vw, 18px);
-  right: clamp(10px, 2.5vw, 18px);
+  top: 0;
+  right: clamp(0px, 1vw, 6px);
   z-index: 500;
   width: 30px;
   height: 30px;
@@ -312,6 +322,21 @@ html {
   opacity: 1;
   transform: rotate(0deg) scale(1);
 }
+[data-theme="light"] .blackboard {
+  background-color: #f5f5f0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .bb-text {
+  color: rgba(20, 15, 10, 0.78);
+}
+[data-theme="light"] .blackboard::before,
+[data-theme="light"] .blackboard::after {
+  background: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .chalk-line {
+  background: rgba(0, 0, 0, 0.07);
+}
 [data-theme="light"] .theme-toggle .icon-sun {
   opacity: 1;
   transform: rotate(0deg) scale(1);
@@ -362,6 +387,7 @@ body::before {
 /* ── HEADER ── */
 header {
   text-align: center;
+  position: relative;
   margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
 }
 
@@ -434,19 +460,57 @@ h1 {
   background: rgba(255, 255, 255, 0.04);
   border: none;
   border-radius: clamp(8px, 2vw, 11px);
-  padding: 0.75rem 2.4rem 0.75rem 2.6rem; /* right padding leaves room for ✕ */
+  padding: 0.75rem 2.4rem 0.75rem 2.6rem;
   color: var(--text);
   font-family: "DM Sans", sans-serif;
   font-size: clamp(0.82rem, 3vw, 1rem);
   font-weight: 500;
   outline: none;
+  box-shadow: inset 0 0 0px rgba(99, 102, 241, 0);
   transition:
-    background 0.2s,
-    box-shadow 0.2s;
+    background 0.35s ease,
+    box-shadow 0.35s ease;
 }
 #searchInput:focus {
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 0 3px var(--indigo-glow);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.16);
+  animation: none;
+}
+
+/* ── Idle breath glow ─────────────────────────────────────────────────────────
+   Three layers pulse together:
+     1. Outer ring        — crisp indigo border
+     2. Outer halo        — wide diffuse bloom beyond the ring
+     3. Inner fill        — inset glow + background tint inside the input
+   ease-in-out makes both the appearance AND disappearance feel smooth.       */
+@keyframes searchIdleGlow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0px rgba(99, 102, 241, 0);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  50% {
+    box-shadow: inset 0 0 22px rgba(99, 102, 241, 0.22);
+    background: rgba(99, 102, 241, 0.09);
+  }
+}
+#searchInput:placeholder-shown:not(:focus) {
+  animation: searchIdleGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes searchIdleGlowLight {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0px rgba(194, 122, 6, 0);
+    background: rgba(0, 0, 0, 0.04);
+  }
+  50% {
+    box-shadow: inset 0 0 22px rgba(194, 122, 6, 0.22);
+    background: rgba(194, 122, 6, 0.07);
+  }
+}
+[data-theme="light"] #searchInput:placeholder-shown:not(:focus) {
+  animation: searchIdleGlowLight 2.4s ease-in-out infinite;
 }
 #searchInput::placeholder {
   color: var(--muted);
@@ -742,6 +806,10 @@ h1 {
   padding: 0.22rem 0 0.26rem;
   background: var(--surface);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.75),
+    0 3px 10px rgba(0, 0, 0, 0.55),
+    0 1px 0px rgba(255, 255, 255, 0.05); /* lifts column bar above grid */
 }
 #chCorner {
   width: var(--rnum-w);
@@ -822,6 +890,11 @@ h1 {
     1.5vw,
     14px
   ); /* breathing room above the scrollbar */
+  padding-right: clamp(
+    6px,
+    1.5vw,
+    10px
+  ); /* keep last column clear of scrollbar */
 }
 
 /* Thin themed scrollbars */
@@ -858,11 +931,15 @@ h1 {
   font-size: clamp(0.5rem, 1.4vw, 0.6rem);
   font-weight: 600;
   color: #6366f1;
-  opacity: 0.75;
+  opacity: 1;
   position: sticky;
   left: 0;
   z-index: 15; /* above desk hover (z-index:10), below col-header strip (100) */
   background: var(--surface);
+  box-shadow:
+    6px 0 24px rgba(0, 0, 0, 0.7),
+    3px 0 8px rgba(0, 0, 0, 0.5),
+    1px 0 0px rgba(255, 255, 255, 0.04); /* lifts row bar above grid */
 }
 
 /* ── Corner — spacer matching rnum width, keeps header columns aligned ── */
@@ -912,7 +989,7 @@ h1 {
   background: linear-gradient(145deg, #2a2f4a, #1a1e33);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
-  overflow: visible;
+  overflow: hidden; /* clips lit-seat glow to rounded corners; global _gTip is position:fixed so it is unaffected */
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.4);
@@ -925,12 +1002,13 @@ h1 {
 .desk::before {
   content: "";
   position: absolute;
-  top: clamp(3px, 0.8vw, 5px);
-  left: clamp(4px, 1.2vw, 7px);
-  right: clamp(4px, 1.2vw, 7px);
-  height: clamp(5px, 1.2vw, 8px);
-  border-radius: 4px;
-  opacity: 0.65;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Height matches the badge — desk overflow:hidden clips corners to match desk radius */
+  height: clamp(16px, 3.5vw, 22px);
+  border-radius: 0;
+  opacity: 0.88;
 }
 .desk.glowing {
   border-color: var(--accent);
@@ -992,7 +1070,9 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: clamp(0.25rem, 0.8vw, 0.4rem) clamp(0.15rem, 0.5vw, 0.25rem) 0.3rem;
+  /* top = strip height (clamp 16-22px) + 4-6px breathing gap
+     sides & bottom = desk-edge distance only                  */
+  padding: clamp(22px, 5vw, 30px) clamp(0.15rem, 0.5vw, 0.25rem) 0.3rem;
   overflow: visible;
   cursor: default;
 }
@@ -1002,9 +1082,11 @@ h1 {
   max-width: 95%;
   line-height: 1.2;
   color: rgba(232, 234, 246, 0.7);
-  word-break: break-word;
-  hyphens: auto;
-  margin-top: clamp(6px, 1.5vw, 10px);
+  word-break: normal;
+  hyphens: none;
+  /* Horizontal padding only — keeps text away from desk side edges.
+     Vertical spacing handled by seat padding-top (strip zone) above. */
+  padding: 0 clamp(0.18rem, 0.6vw, 0.35rem);
 }
 .seat-class {
   font-size: var(--seat-roll-size);
@@ -1036,13 +1118,15 @@ h1 {
   border-width: 0.8px;
 }
 .grid-inner.fixed-mobile .seat {
-  padding: 0;
+  /* push name below the desk strip (clamp 16–22 px) + a 3 px breathing gap */
+  padding: calc(clamp(16px, 3.5vw, 22px) + 3px) 0.1rem 0.2rem;
 }
 .grid-inner.fixed-desktop .desk {
   border: none;
 }
 .grid-inner.fixed-desktop .seat {
-  padding: 6.4px 4px 4.8px;
+  /* push name below the desk strip (clamp 16–22 px) + a 4 px breathing gap */
+  padding: calc(clamp(16px, 3.5vw, 22px) + 4px) 4px 4.8px;
 }
 
 /* ══════════════════════════════════════════════
@@ -1053,57 +1137,58 @@ h1 {
   position: fixed;
   z-index: 9999;
   display: none;
+  height: clamp(16px, 3.5vw, 22px); /* matches strip/badge height */
+  align-items: center; /* vertical centre (activated via display:flex in JS) */
   background: rgba(10, 13, 32, 0.93);
   border: 1.5px solid rgba(165, 180, 252, 0.38);
-  border-radius: 10px;
-  padding: 0.22rem 0.52rem;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 0 clamp(0.3rem, 1vw, 0.48rem);
   white-space: nowrap;
   font-family: "DM Sans", sans-serif;
-  font-size: clamp(0.52rem, 1.5vw, 0.62rem);
+  font-size: var(--seat-roll-size);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #c7d2fe;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
 
-/* ── SEAT INFO BADGE (only shown when seat is .lit) ── */
+/* ── SEAT INFO BADGE ── */
+/* Hidden by default. Shown on .lit seats.
+   top:0 + height matching the brown strip → badge bottom = strip bottom exactly.
+   desk overflow:hidden clips the top corners to match the desk border-radius.   */
 .seat-info-badge {
   position: absolute;
-  top: 2px;
+  top: 0;
   left: 50%;
-  transform: translateX(-50%) translateY(-4px) scale(0.8);
+  transform: translateX(-50%);
+  height: clamp(16px, 3.5vw, 22px); /* must match .desk::before height */
+  display: flex;
+  align-items: center;
+  padding: 0 clamp(0.3rem, 1vw, 0.48rem);
   background: rgba(10, 13, 32, 0.92);
   border: 1.5px solid rgba(165, 180, 252, 0.35);
-  border-radius: 10px;
-  padding: clamp(0.16rem, 0.5vw, 0.22rem) clamp(0.3rem, 1vw, 0.48rem);
+  border-top: none; /* flush with desk top edge */
+  border-radius: 0 0 8px 8px; /* only bottom corners rounded */
   white-space: nowrap;
-  font-size: clamp(0.5rem, 1.4vw, 0.58rem);
+  font-size: var(--seat-roll-size);
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #c7d2fe;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   z-index: 20;
   opacity: 0;
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
-}
-.seat:hover .seat-info-badge,
-.seat.tapped .seat-info-badge {
-  opacity: 0;
-  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 .seat.lit .seat-info-badge {
   opacity: 1;
-  top: auto;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%) scale(1);
   border-color: rgba(245, 158, 11, 0.6);
+  border-top: none;
   color: #ffe3b0;
   background: rgba(30, 20, 5, 0.92);
-  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.32);
 }
 
 /* ── LIT / HIGHLIGHTED SEAT ── */
