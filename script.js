@@ -16,6 +16,15 @@
   function applyTheme(theme) {
     if (theme === "light") root.setAttribute("data-theme", "light");
     else root.removeAttribute("data-theme");
+
+    // Swap board label to match the theme
+    const bbText = document.querySelector(".bb-text");
+    if (bbText) {
+      bbText.textContent =
+        theme === "light"
+          ? "✦ Whiteboard — Front of Class ✦"
+          : "✦ Blackboard — Front of Class ✦";
+    }
   }
 
   function toggleTheme() {
@@ -30,6 +39,15 @@
     document
       .getElementById("themeToggle")
       ?.addEventListener("click", toggleTheme);
+
+    // Sync board label with the theme that was already applied before DOM loaded
+    const bbText = document.querySelector(".bb-text");
+    if (bbText) {
+      const isLight = root.getAttribute("data-theme") === "light";
+      bbText.textContent = isLight
+        ? "✦ Whiteboard — Front of Class ✦"
+        : "✦ Blackboard — Front of Class ✦";
+    }
   });
 
   window
@@ -399,7 +417,7 @@ function buildClassroom(roomName) {
      At t=1 (≥1200px): seat = 115 × 67.62px, no border, generous padding.
      Values between scale linearly so there's no jump at any breakpoint.   */
   const FIXED_SEAT_W = 45.52 + (115 - 45.52) * t; // 45.52px → 115px
-  const FIXED_DESK_H = 47.42 + (67.62 - 47.42) * t; // 47.42px → 67.62px
+  const FIXED_DESK_H = 64 + (96 - 64) * t; // 64px → 96px
   const FIXED_DESK_W = isJoined ? FIXED_SEAT_W * 2 : FIXED_SEAT_W;
 
   // Minimum fluid desk width — per-seat baseline of 45.52px.
@@ -550,6 +568,14 @@ function mkSingleDesk(r, col, student) {
 /* ════════════════════════════════════════════════════════
    GLOBAL SEAT TOOLTIP
    ════════════════════════════════════════════════════════ */
+
+/* ── Tooltip customization ──────────────────────────────
+   TOOLTIP_OFFSET_PX  : px from the top of the seat where the tip appears
+                        (matches the seat-info-badge top:3px for lit seats)
+   TOOLTIP_TAP_MS     : how long the tooltip stays visible after a tap/click (ms)
+──────────────────────────────────────────────────────── */
+const TOOLTIP_OFFSET_PX = 3; // ← distance from the top of the seat (px)
+const TOOLTIP_TAP_MS = 1500; // ← visible duration after tap/click (ms)
 const _gTip = (() => {
   const t = document.createElement("div");
   t.id = "_gSeatTip";
@@ -563,26 +589,30 @@ const _gTip = (() => {
 let _gTipHideTimer = null;
 
 function _showTip(anchorEl, text) {
+  // Don't show tooltip on the lit (highlighted) seat — the badge already shows info.
+  if (anchorEl.classList.contains("lit")) return;
+
   if (_gTipHideTimer) {
     clearTimeout(_gTipHideTimer);
     _gTipHideTimer = null;
   }
 
   _gTip.textContent = text;
+  // Use flex so align-items:center works (matches badge vertical centering).
   _gTip.style.cssText =
-    "display:block;visibility:hidden;left:-9999px;top:-9999px;";
+    "display:flex;visibility:hidden;left:-9999px;top:-9999px;";
 
   const tipW = _gTip.offsetWidth;
-  const tipH = _gTip.offsetHeight;
   const rect = anchorEl.getBoundingClientRect();
-  const margin = 6;
-  let top = rect.top - tipH - margin;
-  let left = rect.left + rect.width / 2 - tipW / 2;
 
-  if (top < 4) top = rect.bottom + margin;
+  // ── Mirror the in-seat badge: top of tip = top of seat ─────────────────────
+  // The brown strip starts at the desk/seat top. Badge top:0, height = strip height.
+  // The fixed tip uses the same top so it visually sits on the same strip zone.
+  let top = rect.top;
+  let left = rect.left + rect.width / 2 - tipW / 2;
   left = Math.max(4, Math.min(left, window.innerWidth - tipW - 4));
 
-  _gTip.style.cssText = `display:block;top:${top}px;left:${left}px;`;
+  _gTip.style.cssText = `display:flex;top:${top}px;left:${left}px;`;
 }
 
 function _hideTip() {
@@ -616,10 +646,21 @@ function mkSeat(r, col, side, student, isPhantom = false) {
 
   const tipText = `R${r} · C${col}`;
 
-  el.addEventListener("mouseenter", () => _showTip(el, tipText));
-  el.addEventListener("mouseleave", _hideTip);
-
+  // ── Tap / click to show (1.5 s auto-dismiss) — works on all devices ──────────
+  // Hover is intentionally removed; the tooltip appears only on deliberate tap/click.
   let _tapTimer = null;
+
+  function _triggerTip() {
+    if (_tapTimer) clearTimeout(_tapTimer);
+    _showTip(el, tipText);
+    _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
+    _tapTimer = _gTipHideTimer;
+  }
+
+  // Desktop: click
+  el.addEventListener("click", _triggerTip);
+
+  // Mobile: touchend (only if finger didn't scroll)
   el.addEventListener(
     "touchstart",
     (e) => {
@@ -636,11 +677,9 @@ function mkSeat(r, col, side, student, isPhantom = false) {
       const t = e.changedTouches[0];
       const dx = Math.abs(t.clientX - (el._tx || 0));
       const dy = Math.abs(t.clientY - (el._ty || 0));
-      if (dx > 8 || dy > 8) return;
-      e.preventDefault();
-      if (_tapTimer) clearTimeout(_tapTimer);
-      _showTip(el, tipText);
-      _tapTimer = setTimeout(_hideTip, 2000);
+      if (dx > 8 || dy > 8) return; // was a scroll, not a tap
+      e.preventDefault(); // prevent the click event from also firing
+      _triggerTip();
     },
     { passive: false },
   );
@@ -668,6 +707,8 @@ new IntersectionObserver(
 document.getElementById("scrollArea").addEventListener(
   "scroll",
   function () {
+    // Hide the seat tooltip immediately on any scroll so it never floats over other elements.
+    _hideTip();
     // Use translateX on the inner wrapper — works on all browsers regardless of
     // the parent's overflow:hidden, and is GPU-composited (no layout reflow).
     const inner = document.querySelector(".col-header-inner");
@@ -675,6 +716,9 @@ document.getElementById("scrollArea").addEventListener(
   },
   { passive: true },
 );
+
+// Also hide on window scroll (e.g. pulling the whole page up on mobile).
+window.addEventListener("scroll", _hideTip, { passive: true });
 
 /* ════════════════════════════════════════════════════════
    SEARCH
@@ -884,6 +928,7 @@ document
     if (e.key === "Enter") {
       e.preventDefault();
       currentMatches.length ? selectSuggestion(activeIndex) : doSearch();
+      this.blur(); // dismiss mobile on-screen keyboard
       return;
     }
     if (e.key === "Escape") {
