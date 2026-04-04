@@ -27,11 +27,17 @@
     <!-- LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay">
       <div class="loading-box">
-        <div class="loading-spinner"></div>
-        <p>Loading seating data…</p>
+        <div class="loading-logo">🎓</div>
+        <h2 class="loading-title">Find Your Seat</h2>
+        <p class="loading-msg" id="loadingMsg">Connecting to seating data…</p>
+        <div class="loading-bar-track">
+          <div class="loading-bar-fill" id="loadingBar"></div>
+        </div>
+        <p class="loading-sub">Setting up your exam hall</p>
       </div>
     </div>
 
+    <!-- MAIN CONTENT -->
     <div class="container">
       <!-- HEADER -->
       <header>
@@ -41,17 +47,6 @@
           Type your name below — your assigned seat will light up on the
           classroom map
         </p>
-
-        <!-- ✅ NEW: Refresh button + last-updated label for admin convenience -->
-        <div class="refresh-bar">
-          <button
-            class="btn-refresh"
-            onclick="forceRefresh()"
-            title="Reload data from Google Sheet"
-          >
-            ↺ Refresh Data
-          </button>
-        </div>
       </header>
 
       <!-- SEARCH -->
@@ -72,12 +67,11 @@
             autocomplete="off"
             spellcheck="false"
           />
+          <button class="btn-clear" id="btnClear" onclick="clearSearch()">
+            ✕
+          </button>
           <div id="suggestions" class="suggestions"></div>
         </div>
-        <button class="btn-clear" id="btnClear" onclick="clearSearch()">
-          ✕
-        </button>
-        <button class="btn-search" onclick="doSearch()">Search</button>
       </div>
 
       <!-- RESULT CARD -->
@@ -90,47 +84,56 @@
       <div class="classroom-card">
         <div class="card-label" id="roomLabel">Classroom — Top-Down View</div>
 
-        <div class="sticky-header" id="stickyHeader">
-          <div class="blackboard">
-            <div class="chalk-line"></div>
-            <span class="bb-text">✦ Blackboard — Front of Class ✦</span>
+        <div class="sticky-wrapper">
+          <div class="sticky-header" id="stickyHeader">
+            <div class="blackboard">
+              <div class="chalk-line"></div>
+              <span class="bb-text">✦ Blackboard — Front of Class ✦</span>
+            </div>
+          </div>
+          <div class="col-header-wrapper">
+            <div id="chCorner" class="grid-corner"></div>
+            <div id="colHeaderRow" class="col-header-row"></div>
+          </div>
+        </div>
+        <!--
+          LAYOUT:
+          .grid-wrapper
+          └── .scroll-area   ← single scroll container (h + v scrollbars appear inside here)
+                └── .grid-inner  ← CSS grid: col 1 = rnum, cols 2+ = desks
+                      Row 0: .grid-corner + .col-head × N
+                      Row 1+: .rnum + .desk × N
+
+          .bottom-row sits OUTSIDE .scroll-area so legend/compass never drift.
+        -->
+        <div class="grid-wrapper">
+          <div class="scroll-area" id="scrollArea">
+            <div class="grid-inner" id="gridInner"></div>
           </div>
         </div>
 
-        <!-- DESK GRID -->
-        <div class="scroll-x">
-          <div class="inner-min">
-            <div class="grid-area">
-              <div class="row-nums" id="rowNums"></div>
-
-              <div class="desk-grid">
-                <div class="col-heads" id="colHeads"></div>
-                <div class="desk-rows" id="deskRows"></div>
-              </div>
+        <div class="bottom-row">
+          <div class="legend">
+            <div class="legend-item">
+              <div class="ldot ldot-joined"></div>
+              <span>Normal Seat</span>
             </div>
-
-            <div class="bottom-row">
-              <div class="legend">
-                <div class="legend-item">
-                  <div class="ldot ldot-joined"></div>
-                  <span>Normal Seat</span>
-                </div>
-                <div class="legend-item">
-                  <div class="ldot ldot-lit"></div>
-                  <span>Your Seat</span>
-                </div>
-              </div>
-              <div class="compass">⬆ Front</div>
+            <div class="legend-item">
+              <div class="ldot ldot-lit"></div>
+              <span>Your Seat</span>
             </div>
           </div>
+          <div class="compass">⬆ Front</div>
         </div>
       </div>
+      <!-- /.classroom-card -->
 
       <footer>
         Exam Seating System &bull; Search your name to instantly locate your
         seat
       </footer>
     </div>
+    <!-- /.container -->
 
     <script src="./script.js"></script>
   </body>
