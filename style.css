@@ -258,7 +258,7 @@ html {
    position:fixed — stays visible when page scrolls
    ══════════════════════════════════════════════ */
 .theme-toggle {
-  position: fixed;
+  position: absolute;
   top: clamp(10px, 2.5vw, 18px);
   right: clamp(10px, 2.5vw, 18px);
   z-index: 500;
