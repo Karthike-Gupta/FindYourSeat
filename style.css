@@ -29,13 +29,10 @@ html {
   --err: #f87171;
   --err-soft: rgba(248, 113, 113, 0.12);
 
-  /* Fluid desk height */
-  --desk-h: clamp(58px, 10vw, 80px);
-  /* Fluid seat name */
-  --seat-name-size: clamp(0.48rem, 1.4vw, 0.62rem);
-  /* Fluid roll number */
-  --seat-roll-size: clamp(0.4rem, 1.1vw, 0.52rem);
-  /* Fluid row number column width */
+  /* Fluid desk height — overridden inline by JS in fixed-size mode */
+  --desk-h: clamp(58px, 10vw, 120px);
+  --seat-name-size: clamp(0.48rem, 1.4vw, 1rem);
+  --seat-roll-size: clamp(0.4rem, 1.1vw, 0.85rem);
   --rnum-w: clamp(18px, 3.5vw, 26px);
 }
 
@@ -59,7 +56,6 @@ html {
   --err-soft: rgba(192, 57, 43, 0.09);
 }
 
-/* ── Light: page background gradient ── */
 [data-theme="light"] body::before {
   background:
     radial-gradient(
@@ -73,28 +69,21 @@ html {
       transparent 70%
     );
 }
-
-/* ── Light: h1 gradient ── */
 [data-theme="light"] h1 {
   background: linear-gradient(130deg, #2d1f0a 0%, #6d28d9 50%, #b45309 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
-/* ── Light: badge ── */
 [data-theme="light"] .badge {
   background: rgba(99, 102, 241, 0.08);
   border-color: rgba(99, 102, 241, 0.22);
   color: #4338ca;
 }
-
-/* ── Light: search card ── */
 [data-theme="light"] .search-card {
   background: #fff8ef;
   box-shadow: 0 2px 16px rgba(180, 140, 80, 0.12);
 }
-
 [data-theme="light"] #searchInput {
   background: rgba(0, 0, 0, 0.04);
   color: var(--text);
@@ -105,18 +94,9 @@ html {
 [data-theme="light"] #searchInput::placeholder {
   color: #a08c70;
 }
-
-/* ── Light: clear button ── */
-[data-theme="light"] .btn-clear {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: var(--muted);
+[data-theme="light"] .search-icon svg path {
+  fill: #6d5a3c;
 }
-[data-theme="light"] .btn-clear:hover {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-/* ── Light: suggestions ── */
 [data-theme="light"] .suggestions {
   background: #fffcf5;
   border-color: rgba(0, 0, 0, 0.1);
@@ -129,8 +109,6 @@ html {
 [data-theme="light"] .suggestion-item.active {
   background: rgba(99, 102, 241, 0.1);
 }
-
-/* ── Light: result card ── */
 [data-theme="light"] .res-detail {
   border-bottom-color: rgba(0, 0, 0, 0.06);
 }
@@ -159,29 +137,33 @@ html {
   color: #4338ca;
   background: rgba(99, 102, 241, 0.1);
 }
-
-/* ── Light: classroom card ── */
 [data-theme="light"] .classroom-card {
   background: #fff8ef;
   border-color: rgba(180, 140, 80, 0.18);
   box-shadow: 0 4px 24px rgba(180, 120, 40, 0.08);
 }
-
-/* ── Light: sticky header ── */
-[data-theme="light"] .sticky-header {
+[data-theme="light"] .sticky-wrapper {
   background: rgba(247, 242, 234, 0.92);
 }
-[data-theme="light"] .sticky-header.is-stuck {
-  border-bottom-color: rgba(180, 140, 80, 0.18);
+[data-theme="light"] .sticky-wrapper.is-stuck {
   box-shadow: 0 6px 28px rgba(160, 100, 30, 0.12);
 }
-
-/* ── Light: col heads & row nums ── */
+[data-theme="light"] .sticky-wrapper.is-stuck .sticky-header {
+  border-bottom-color: rgba(180, 140, 80, 0.18);
+}
+[data-theme="light"] .col-header-wrapper {
+  background: var(--surface);
+}
 [data-theme="light"] .col-head {
   color: #6d5a3c;
+  background: var(--surface);
 }
 [data-theme="light"] .rnum {
   color: #5048b0;
+  background: var(--surface);
+}
+[data-theme="light"] .grid-corner {
+  background: var(--surface);
 }
 [data-theme="light"] .ch-bench-label {
   color: rgba(80, 72, 176, 0.75);
@@ -190,8 +172,6 @@ html {
 [data-theme="light"] .ch-bench-label::after {
   background: rgba(80, 72, 176, 0.25);
 }
-
-/* ── Light: desk base ── */
 [data-theme="light"] .desk {
   background: linear-gradient(145deg, #c9a97a, #b8915e);
   border-color: rgba(180, 140, 80, 0.35);
@@ -206,16 +186,12 @@ html {
 [data-theme="light"] .desk--joined::after {
   background: rgba(150, 110, 50, 0.3);
 }
-
-/* ── Light: desk glowing ── */
 [data-theme="light"] .desk.glowing {
   border-color: var(--accent);
   box-shadow:
     0 0 18px var(--accent-glow),
     inset 0 0 8px rgba(194, 122, 6, 0.1);
 }
-
-/* ── Light: seat text ── */
 [data-theme="light"] .seat-name {
   color: rgba(30, 20, 10, 0.82);
 }
@@ -228,8 +204,6 @@ html {
 [data-theme="light"] .seat.lit .seat-class {
   color: #7c3a00;
 }
-
-/* ── Light: seat info badge ── */
 [data-theme="light"] .seat-info-badge {
   background: rgba(255, 250, 240, 0.96);
   border-color: rgba(99, 102, 241, 0.3);
@@ -242,13 +216,9 @@ html {
   color: #7c3a00;
   box-shadow: 0 4px 18px rgba(194, 122, 6, 0.22);
 }
-
-/* ── Light: loading overlay ── */
 [data-theme="light"] .loading-overlay {
   background: rgba(247, 242, 234, 0.88);
 }
-
-/* ── Light: bottom bar ── */
 [data-theme="light"] .bottom-row {
   border-top-color: rgba(0, 0, 0, 0.08);
 }
@@ -259,32 +229,36 @@ html {
   background: #c4a882;
   border-color: rgba(180, 130, 60, 0.5);
 }
-
 [data-theme="light"] .ldot-lit {
   background: rgba(194, 122, 6, 0.25);
   border-color: var(--accent);
 }
-
-/* ── Light: refresh button ── */
-[data-theme="light"] .btn-refresh {
-  border-color: rgba(180, 140, 80, 0.35);
-  color: var(--muted);
-}
-[data-theme="light"] .btn-refresh:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-/* ── Light: footer ── */
 [data-theme="light"] footer {
   color: var(--muted);
 }
+[data-theme="light"] .g-seat-tip {
+  background: rgba(255, 250, 240, 0.97);
+  border-color: rgba(99, 102, 241, 0.32);
+  color: #2d1f7a;
+  box-shadow: 0 4px 16px rgba(140, 100, 40, 0.22);
+}
+[data-theme="light"] .theme-toggle {
+  background: rgba(255, 248, 228, 0.82);
+  border-color: rgba(180, 140, 60, 0.3);
+  box-shadow: 0 2px 16px rgba(180, 120, 40, 0.2);
+}
+[data-theme="light"] .theme-toggle:hover {
+  background: rgba(255, 244, 210, 0.95);
+  border-color: rgba(194, 122, 6, 0.45);
+  box-shadow: 0 4px 22px rgba(180, 110, 20, 0.28);
+}
 
 /* ══════════════════════════════════════════════
-   THEME TOGGLE BUTTON
+   THEME TOGGLE
+   position:fixed — stays visible when page scrolls
    ══════════════════════════════════════════════ */
 .theme-toggle {
-  position: absolute;
+  position: fixed;
   top: clamp(10px, 2.5vw, 18px);
   right: clamp(10px, 2.5vw, 18px);
   z-index: 500;
@@ -306,8 +280,9 @@ html {
     box-shadow 0.28s;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.28);
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
-
 .theme-toggle:hover {
   transform: scale(1.08);
   box-shadow: 0 4px 22px rgba(0, 0, 0, 0.38);
@@ -318,7 +293,6 @@ html {
   transform: scale(0.96);
 }
 
-/* icon layers — only one visible at a time */
 .theme-toggle .icon-sun,
 .theme-toggle .icon-moon {
   position: absolute;
@@ -330,8 +304,6 @@ html {
   pointer-events: none;
   user-select: none;
 }
-
-/* dark mode: show moon, hide sun */
 .theme-toggle .icon-sun {
   opacity: 0;
   transform: rotate(60deg) scale(0.7);
@@ -340,8 +312,6 @@ html {
   opacity: 1;
   transform: rotate(0deg) scale(1);
 }
-
-/* light mode: show sun, hide moon */
 [data-theme="light"] .theme-toggle .icon-sun {
   opacity: 1;
   transform: rotate(0deg) scale(1);
@@ -351,18 +321,9 @@ html {
   transform: rotate(-60deg) scale(0.7);
 }
 
-/* light mode button surface */
-[data-theme="light"] .theme-toggle {
-  background: rgba(255, 248, 228, 0.82);
-  border-color: rgba(180, 140, 60, 0.3);
-  box-shadow: 0 2px 16px rgba(180, 120, 40, 0.2);
-}
-[data-theme="light"] .theme-toggle:hover {
-  background: rgba(255, 244, 210, 0.95);
-  border-color: rgba(194, 122, 6, 0.45);
-  box-shadow: 0 4px 22px rgba(180, 110, 20, 0.28);
-}
-
+/* ══════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════ */
 body {
   background: var(--bg);
   color: var(--text);
@@ -370,7 +331,6 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
-
 body::before {
   content: "";
   position: fixed;
@@ -449,15 +409,14 @@ h1 {
   margin-bottom: 1.25rem;
   display: flex;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
-
 .search-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
 }
-
 .search-icon {
   position: absolute;
   left: 12px;
@@ -470,21 +429,12 @@ h1 {
   justify-content: center;
   pointer-events: none;
 }
-
-.search-icon-img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  opacity: 0.85;
-}
-
 #searchInput {
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
   border: none;
   border-radius: clamp(8px, 2vw, 11px);
-  padding: 0.75rem 0.85rem 0.75rem 2.6rem;
+  padding: 0.75rem 2.4rem 0.75rem 2.6rem; /* right padding leaves room for ✕ */
   color: var(--text);
   font-family: "DM Sans", sans-serif;
   font-size: clamp(0.82rem, 3vw, 1rem);
@@ -503,53 +453,34 @@ h1 {
   font-weight: 300;
 }
 
-.btn-search {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: none;
-  border-radius: clamp(8px, 2vw, 11px);
-  padding: 0.75rem clamp(0.75rem, 2.5vw, 1.3rem);
-  color: #fff;
-  font-family: "DM Sans", sans-serif;
-  font-size: clamp(0.8rem, 2.5vw, 0.9rem);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    filter 0.2s,
-    transform 0.12s;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
-  flex-shrink: 0;
-}
-.btn-search:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
-}
-.btn-search:active {
-  transform: translateY(0);
-}
-
 .btn-clear {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: clamp(8px, 2vw, 11px);
-  padding: 0.75rem 0.85rem;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
   color: var(--muted);
-  font-family: "DM Sans", sans-serif;
-  font-size: clamp(0.8rem, 2.5vw, 0.9rem);
-  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.3rem 0.35rem;
+  border-radius: 50%;
   cursor: pointer;
-  transition: background 0.2s;
-  display: none;
-  flex-shrink: 0;
+  display: none; /* shown by JS when input has text */
+  transition:
+    color 0.18s,
+    background 0.18s;
+  z-index: 1;
 }
 .btn-clear:hover {
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.09);
 }
 
-/* ── SUGGESTIONS DROPDOWN ── */
+/* ── SUGGESTIONS ── */
 .suggestions {
   position: absolute;
-  top: 110%;
+  top: calc(100% + 6px);
   left: 0;
   width: 100%;
   background: var(--surface);
@@ -557,7 +488,7 @@ h1 {
   border-radius: 10px;
   max-height: 220px;
   overflow-y: auto;
-  z-index: 200;
+  z-index: 300;
   display: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -596,6 +527,13 @@ h1 {
   background: var(--err-soft);
   border-color: rgba(248, 113, 113, 0.25);
 }
+#resultCard.multi {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+#resultCard.multi .res-title {
+  color: #a5b4fc;
+}
 
 @keyframes slideDown {
   from {
@@ -608,41 +546,23 @@ h1 {
   }
 }
 
-/* ── LOADING OVERLAY ── */
-.loading-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(13, 15, 26, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
+.res-title {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+  margin-bottom: 0.45rem;
 }
-.loading-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+.success .res-title {
+  color: var(--found);
+}
+.error .res-title {
+  color: var(--err);
+}
+.res-body {
   color: var(--muted);
-  font-size: 0.88rem;
-}
-.loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(99, 102, 241, 0.2);
-  border-top-color: #6366f1;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  font-size: clamp(0.75rem, 2.5vw, 0.88rem);
+  line-height: 1.6;
 }
 
-/* ── RESULT DETAIL ROWS ── */
 .res-detail {
   display: flex;
   align-items: baseline;
@@ -664,15 +584,6 @@ h1 {
   font-weight: 600;
   margin-left: auto;
   text-align: right;
-}
-
-/* ── MULTI-MATCH RESULT CARD ── */
-#resultCard.multi {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.28);
-}
-#resultCard.multi .res-title {
-  color: #a5b4fc;
 }
 
 .multi-result {
@@ -712,31 +623,69 @@ h1 {
   margin-left: auto;
 }
 
-/* ── prefers-reduced-motion ── */
-@media (prefers-reduced-motion: reduce) {
-  .seat.lit {
-    animation: none;
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.5s ease;
+}
+.loading-box {
+  text-align: center;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.loading-logo {
+  font-size: 3rem;
+  animation: floatLogo 2s ease-in-out infinite;
+}
+@keyframes floatLogo {
+  0%,
+  100% {
+    transform: translateY(0);
   }
-  .loading-spinner {
-    animation-duration: 1.5s;
+  50% {
+    transform: translateY(-8px);
   }
 }
-
-.res-title {
+.loading-title {
   font-family: "Playfair Display", serif;
-  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
-  margin-bottom: 0.45rem;
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  color: var(--text);
+  margin: 0;
 }
-.success .res-title {
-  color: var(--found);
-}
-.error .res-title {
-  color: var(--err);
-}
-.res-body {
+.loading-msg {
+  font-size: 0.85rem;
   color: var(--muted);
-  font-size: clamp(0.75rem, 2.5vw, 0.88rem);
-  line-height: 1.6;
+  min-height: 1.2em;
+  transition: opacity 0.3s;
+}
+.loading-bar-track {
+  width: min(280px, 80vw);
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #6366f1, var(--accent));
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.loading-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.45;
 }
 
 /* ── CLASSROOM CARD ── */
@@ -747,7 +696,6 @@ h1 {
   padding: clamp(0.75rem, 2.5vw, 1.2rem) clamp(0.5rem, 2vw, 1rem);
   overflow: visible;
 }
-
 .card-label {
   font-size: clamp(0.58rem, 1.6vw, 0.68rem);
   font-weight: 600;
@@ -757,29 +705,60 @@ h1 {
   margin-bottom: clamp(0.65rem, 2vw, 1.1rem);
 }
 
-/* ── STICKY HEADER ── */
-.sticky-header {
+/* ── STICKY WRAPPER — blackboard + col-headers, both pinned together ── */
+.sticky-wrapper {
   position: sticky;
   top: 0;
   z-index: 100;
+  border-radius: 14px 14px 0 0;
   background: rgba(13, 15, 26, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid transparent;
-  border-radius: 14px 14px 0 0;
-  padding: 0.65rem 0 0.55rem;
-  margin: -0.65rem 0 0.55rem;
+  overflow: hidden;
   transition:
-    border-color 0.22s ease,
     box-shadow 0.22s ease,
     border-radius 0.22s ease;
 }
-.sticky-header.is-stuck {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+.sticky-wrapper.is-stuck {
   box-shadow: 0 6px 28px rgba(0, 0, 0, 0.5);
   border-radius: 0;
 }
 
+/* ── STICKY BLACKBOARD HEADER ── */
+.sticky-header {
+  border-bottom: 1px solid transparent;
+  padding: 0.65rem 0 0.55rem;
+  transition: border-color 0.22s ease;
+}
+.sticky-wrapper.is-stuck .sticky-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── COLUMN HEADER ROW (pinned just below the blackboard) ── */
+.col-header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.2rem, 0.8vw, 0.4rem);
+  padding: 0.22rem 0 0.26rem;
+  background: var(--surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+#chCorner {
+  width: var(--rnum-w);
+  flex-shrink: 0;
+}
+.col-header-row {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden; /* clips .col-header-inner as it translates on h-scroll */
+}
+/* Inner grid layer — receives translateX(-scrollLeft) from the scroll handler.
+   GPU-composited via will-change so the transform never triggers layout.    */
+.col-header-inner {
+  display: grid;
+  gap: clamp(0.2rem, 0.8vw, 0.4rem);
+  will-change: transform;
+}
 /* ── BLACKBOARD ── */
 .blackboard {
   background-color: #000;
@@ -826,21 +805,51 @@ h1 {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* ── GRID AREA ── */
-.grid-area {
-  display: flex;
-  gap: clamp(0.2rem, 0.8vw, 0.4rem);
+/* ══════════════════════════════════════════════
+   GRID
+   ══════════════════════════════════════════════ */
+.grid-wrapper {
   margin-top: 0.6rem;
 }
 
-.row-nums {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.2rem, 0.8vw, 0.4rem);
-  padding-top: 26px;
-  flex-shrink: 0;
-  width: var(--rnum-w);
+/* Single scroll container — handles both axes */
+.scroll-area {
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: clamp(
+    8px,
+    1.5vw,
+    14px
+  ); /* breathing room above the scrollbar */
 }
+
+/* Thin themed scrollbars */
+.scroll-area::-webkit-scrollbar {
+  width: 4px;
+  height: 5px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 99px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.65);
+}
+[data-theme="light"] .scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Flat CSS grid — gridTemplateColumns set by JS */
+.grid-inner {
+  display: grid;
+  gap: clamp(0.2rem, 0.8vw, 0.4rem);
+}
+
+/* ── Row number — sticky LEFT (stays on horizontal scroll) ── */
 .rnum {
   height: var(--desk-h);
   display: flex;
@@ -850,31 +859,32 @@ h1 {
   font-weight: 600;
   color: #6366f1;
   opacity: 0.75;
+  position: sticky;
+  left: 0;
+  z-index: 15; /* above desk hover (z-index:10), below col-header strip (100) */
+  background: var(--surface);
 }
 
-.desk-grid {
-  flex: 1;
-  min-width: 0;
+/* ── Corner — spacer matching rnum width, keeps header columns aligned ── */
+.grid-corner {
+  width: var(--rnum-w);
+  flex-shrink: 0;
 }
 
-/* col-heads is now dynamic — JS sets gridTemplateColumns inline */
-.col-heads {
-  display: grid;
-  gap: clamp(0.2rem, 0.8vw, 0.4rem);
-  margin-bottom: clamp(0.2rem, 0.8vw, 0.4rem);
-}
+/* ── Column headers — inside sticky-wrapper, no sticky needed here ── */
 .col-head {
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  font-size: clamp(0.5rem, 1.4vw, 0.62rem);
-  font-weight: 600;
-  letter-spacing: clamp(0.01em, 0.4vw, 0.06em);
-  text-transform: uppercase;
+  font-size: clamp(0.46rem, 1.3vw, 0.58rem);
+  font-weight: 700;
   color: var(--muted);
-  padding: 0.2rem;
-  opacity: 0.8;
+  padding: 0.12rem 0;
+  letter-spacing: 0.04em;
 }
 
-/* Bench label inside joined col headers */
 .ch-bench-label {
   display: inline-flex;
   align-items: center;
@@ -892,20 +902,9 @@ h1 {
   vertical-align: middle;
 }
 
-.desk-rows {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.2rem, 0.8vw, 0.4rem);
-}
-/* desk-row gridTemplateColumns set dynamically by JS */
-.desk-row {
-  display: grid;
-  gap: clamp(0.2rem, 0.8vw, 0.4rem);
-}
-
-/* ════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════
    DESK BASE
-   ════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════ */
 .desk {
   position: relative;
   height: var(--desk-h);
@@ -919,10 +918,10 @@ h1 {
     0 4px 12px rgba(0, 0, 0, 0.4);
   transition:
     border-color 0.25s,
-    box-shadow 0.25s;
+    box-shadow 0.25s,
+    z-index 0s;
+  z-index: 1;
 }
-
-/* Wood-grain top bar — shared by both desk types */
 .desk::before {
   content: "";
   position: absolute;
@@ -933,23 +932,22 @@ h1 {
   border-radius: 4px;
   opacity: 0.65;
 }
-
 .desk.glowing {
   border-color: var(--accent);
   box-shadow:
     0 0 18px var(--accent-glow),
     inset 0 0 8px rgba(245, 158, 11, 0.06);
+  z-index: 10;
+}
+.desk:has(.seat:hover),
+.desk:has(.seat.tapped) {
+  z-index: 10;
 }
 
-/* ════════════════════════════════════════════════════════
-   JOINED DESK  (two students side by side on one bench)
-   ════════════════════════════════════════════════════════ */
+/* Joined desk */
 .desk--joined::before {
-  /* Warm wood grain — classic bench look */
   background: linear-gradient(90deg, #8b5a2b, #a47148);
 }
-
-/* Center divider line between two seats */
 .desk--joined::after {
   content: "";
   position: absolute;
@@ -962,29 +960,20 @@ h1 {
   pointer-events: none;
 }
 
-/* ════════════════════════════════════════════════════════
-   SINGLE DESK  (one student — standalone desk)
-   ════════════════════════════════════════════════════════ */
+/* Single desk */
 .desk--single {
-  /* Same warm-brown palette as joined benches */
   border-color: rgba(255, 255, 255, 0.08);
   border-width: 1px;
   background: linear-gradient(145deg, #2a2f4a, #1a1e33);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.4);
-  /* Slightly more rounded corners — softer standalone look */
   border-radius: clamp(8px, 2vw, 12px);
 }
-
-/* Same warm wood-grain bar as joined desks */
 .desk--single::before {
   background: linear-gradient(90deg, #8b5a2b, #a47148);
   opacity: 0.65;
 }
-
-/* No divider — single desk has no ::after */
-
 .desk--single.glowing {
   border-color: var(--accent);
   box-shadow:
@@ -993,9 +982,9 @@ h1 {
     0 0 0 2px rgba(245, 158, 11, 0.12);
 }
 
-/* ════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════
    SEAT BASE
-   ════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════ */
 .seat {
   flex: 1;
   position: relative;
@@ -1007,7 +996,6 @@ h1 {
   overflow: visible;
   cursor: default;
 }
-
 .seat-name {
   font-size: var(--seat-name-size);
   text-align: center;
@@ -1018,34 +1006,68 @@ h1 {
   hyphens: auto;
   margin-top: clamp(6px, 1.5vw, 10px);
 }
-
 .seat-class {
   font-size: var(--seat-roll-size);
   opacity: 0.5;
   margin-top: 2px;
 }
 
-/* ── SINGLE SEAT styling ── */
 .seat--single {
-  /* Full width of the single desk */
   width: 100%;
   flex: 1;
-  /* Slightly more generous padding — has the whole desk to itself */
   padding: clamp(0.3rem, 1vw, 0.5rem) clamp(0.2rem, 0.8vw, 0.4rem);
 }
-
 .seat--single .seat-name {
-  /* Slightly bigger text — more room available */
   font-size: clamp(0.52rem, 1.55vw, 0.68rem);
   color: rgba(232, 234, 246, 0.8);
 }
-
 .seat--single .seat-class {
   font-size: clamp(0.42rem, 1.2vw, 0.54rem);
   opacity: 0.55;
 }
 
-/* ── SEAT INFO BADGE (tooltip on hover / lit state) ── */
+/* ══════════════════════════════════════════════
+   FIXED-SIZE MODE
+   Activated only when physCols exceeds threshold:
+   mobile > 6 cols → .fixed-mobile on .grid-inner
+   desktop > 10 cols → .fixed-desktop on .grid-inner
+   ══════════════════════════════════════════════ */
+.grid-inner.fixed-mobile .desk {
+  border-width: 0.8px;
+}
+.grid-inner.fixed-mobile .seat {
+  padding: 0;
+}
+.grid-inner.fixed-desktop .desk {
+  border: none;
+}
+.grid-inner.fixed-desktop .seat {
+  padding: 6.4px 4px 4.8px;
+}
+
+/* ══════════════════════════════════════════════
+   GLOBAL SEAT TOOLTIP
+   position:fixed — never clipped by scroll containers
+   ══════════════════════════════════════════════ */
+.g-seat-tip {
+  position: fixed;
+  z-index: 9999;
+  display: none;
+  background: rgba(10, 13, 32, 0.93);
+  border: 1.5px solid rgba(165, 180, 252, 0.38);
+  border-radius: 10px;
+  padding: 0.22rem 0.52rem;
+  white-space: nowrap;
+  font-family: "DM Sans", sans-serif;
+  font-size: clamp(0.52rem, 1.5vw, 0.62rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #c7d2fe;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+/* ── SEAT INFO BADGE (only shown when seat is .lit) ── */
 .seat-info-badge {
   position: absolute;
   top: 2px;
@@ -1068,12 +1090,11 @@ h1 {
     opacity 0.18s ease,
     transform 0.18s ease;
 }
-
-.seat:hover .seat-info-badge {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
+.seat:hover .seat-info-badge,
+.seat.tapped .seat-info-badge {
+  opacity: 0;
+  pointer-events: none;
 }
-
 .seat.lit .seat-info-badge {
   opacity: 1;
   top: auto;
@@ -1085,7 +1106,7 @@ h1 {
   box-shadow: 0 4px 18px rgba(245, 158, 11, 0.3);
 }
 
-/* ── HIGHLIGHTED / LIT SEAT ── */
+/* ── LIT / HIGHLIGHTED SEAT ── */
 .seat.lit {
   background: rgba(245, 158, 11, 0.18);
   animation: seatPulse 1.6s ease-in-out infinite;
@@ -1098,7 +1119,6 @@ h1 {
   opacity: 0.75;
   color: #ffe3b0;
 }
-
 @keyframes seatPulse {
   0%,
   100% {
@@ -1107,6 +1127,12 @@ h1 {
   50% {
     background: rgba(245, 158, 11, 0.3);
   }
+}
+
+/* ── PHANTOM SEAT ── */
+.seat--phantom {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ── LEGEND / COMPASS ── */
@@ -1138,10 +1164,6 @@ h1 {
   border-radius: 4px;
   flex-shrink: 0;
 }
-.ldot-normal {
-  background: var(--desk);
-  border: 1px solid var(--desk-border);
-}
 .ldot-joined {
   background: #2a2f4a;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1168,31 +1190,41 @@ footer {
   opacity: 0.45;
 }
 
-/* ── SCROLL ── */
-.scroll-x {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.inner-min {
-  min-width: 320px;
+/* ── Prevent text selection on seats ── */
+.seat,
+.desk,
+.seat-name,
+.seat-class,
+.seat-info-badge {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* ══ RESPONSIVE ══ */
+/* ── prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .seat.lit {
+    animation: none;
+  }
+  .loading-logo {
+    animation-duration: 1.5s;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS  (min supported: 375px)
+   ══════════════════════════════════════════════ */
+
+/* ≤ 480px — mobile search layout */
 @media (max-width: 480px) {
   .search-card {
-    flex-wrap: wrap;
     padding: 0.85rem;
   }
-  .btn-search {
-    width: 100%;
-    text-align: center;
-    padding: 0.7rem 1rem;
-  }
-  .btn-clear {
-    flex: 0 0 auto;
+  .search-wrap {
+    flex: 1 1 100%;
   }
 }
 
+/* ≤ 375px — minimum supported width tweaks */
 @media (max-width: 375px) {
   .container {
     padding: 1.25rem 0.55rem 1.75rem;
@@ -1201,10 +1233,7 @@ footer {
     padding: 0.75rem 0.45rem;
     border-radius: 12px;
   }
-  .grid-area,
-  .desk-row,
-  .col-heads,
-  .desk-rows {
+  .grid-inner {
     gap: 0.2rem;
   }
   .desk {
@@ -1219,69 +1248,8 @@ footer {
     left: 4px;
     right: 4px;
   }
-  .seat-info-badge {
-    top: 2px;
-    left: 50%;
-    right: auto !important;
-    transform: translateX(-50%) translateY(-4px) scale(0.8);
-  }
-  .seat:hover .seat-info-badge,
-  .seat.lit .seat-info-badge {
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
   .bottom-row {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-
-/* Refresh bar (header area) */
-.refresh-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.last-updated {
-  font-size: 0.72rem;
-  color: var(--muted);
-  letter-spacing: 0.03em;
-}
-
-.btn-refresh {
-  background: transparent;
-  border: 1px solid var(--desk-border);
-  color: var(--muted);
-  font-size: 0.75rem;
-  padding: 0.28rem 0.75rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition:
-    color 0.2s,
-    border-color 0.2s;
-  font-family: inherit;
-}
-
-.btn-refresh:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-/* ── Phantom seat (odd cols in joined room — fully hidden, no border, no content) ── */
-.seat--phantom {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-/* ── Prevent text selection on seats when tapping/clicking ── */
-.seat,
-.desk,
-.seat-name,
-.seat-class,
-.seat-info-badge {
-  user-select: none;
-  -webkit-user-select: none; /* Safari / iOS */
 }
