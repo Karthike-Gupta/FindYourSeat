@@ -4,16 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Exam Seat Finder</title>
+    <link rel="icon" type="image/png" href="./images/seat.png" sizes="64x64" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./style.css" />
     <meta name="theme-color" content="#1a1a2e" />
-    <link rel="manifest" href="./manifest.json" />
   </head>
   <body>
-    <!-- LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay">
       <div class="loading-box">
         <div class="loading-logo">🎓</div>
@@ -26,9 +28,7 @@
       </div>
     </div>
 
-    <!-- MAIN CONTENT -->
     <div class="container">
-      <!-- HEADER -->
       <header>
         <button
           class="theme-toggle"
@@ -47,7 +47,6 @@
         </p>
       </header>
 
-      <!-- SEARCH -->
       <div class="search-card">
         <div class="search-wrap">
           <span class="search-icon">
@@ -65,20 +64,16 @@
             autocomplete="off"
             spellcheck="false"
           />
-          <button class="btn-clear" id="btnClear" onclick="clearSearch()">
-            ✕
-          </button>
+          <button class="btn-clear" id="btnClear">✕</button>
           <div id="suggestions" class="suggestions"></div>
         </div>
       </div>
 
-      <!-- RESULT CARD -->
       <div id="resultCard">
         <div class="res-title" id="resTitle"></div>
         <div class="res-body" id="resBody"></div>
       </div>
 
-      <!-- CLASSROOM -->
       <div class="classroom-card">
         <div class="card-label" id="roomLabel">Classroom — Top-Down View</div>
 
@@ -94,16 +89,7 @@
             <div id="colHeaderRow" class="col-header-row"></div>
           </div>
         </div>
-        <!--
-          LAYOUT:
-          .grid-wrapper
-          └── .scroll-area   ← single scroll container (h + v scrollbars appear inside here)
-                └── .grid-inner  ← CSS grid: col 1 = rnum, cols 2+ = desks
-                      Row 0: .grid-corner + .col-head × N
-                      Row 1+: .rnum + .desk × N
 
-          .bottom-row sits OUTSIDE .scroll-area so legend/compass never drift.
-        -->
         <div class="grid-wrapper">
           <div class="scroll-area" id="scrollArea">
             <div class="grid-inner" id="gridInner"></div>
@@ -124,14 +110,17 @@
           <div class="compass">⬆ Front</div>
         </div>
       </div>
-      <!-- /.classroom-card -->
 
       <footer>
         Exam Seating System &bull; Search your name to instantly locate your
         seat
       </footer>
     </div>
-    <!-- /.container -->
+
+    <button id="findMySeat" class="find-seat-btn" aria-label="Jump to my seat">
+      <span class="fsb-icon">📍</span>
+      <span>My Seat</span>
+    </button>
 
     <script src="./script.js"></script>
   </body>
