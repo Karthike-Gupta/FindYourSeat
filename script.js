@@ -48,6 +48,13 @@
         ? "✦ Whiteboard — Front of Class ✦"
         : "✦ Blackboard — Front of Class ✦";
     }
+
+    // Delegated listener for multi-result rows — avoids inline onclick strings
+    // and works regardless of how many times resBody.innerHTML is replaced.
+    document.getElementById("resBody")?.addEventListener("click", (e) => {
+      const row = e.target.closest(".multi-result[data-index]");
+      if (row) selectMatch(+row.dataset.index);
+    });
   });
 
   window
@@ -64,7 +71,7 @@
 const CONFIG = {
   APPS_SCRIPT_URL:
     "https://script.google.com/macros/s/AKfycbx8DbF6VRnie9hDGBTBvhaTbqxwudo69z7iYrlqkDhxqYGSBtt5DzENnt7ShOCWDYBg/exec",
-  POLL_INTERVAL: 30 * 1000,
+  POLL_INTERVAL: 10 * 1000,
 };
 
 /* ════════════════════════════════════════════════════════
@@ -80,6 +87,13 @@ let _roomsFingerprint = "";
 let _pollTimer = null;
 let _loadingTimers = [];
 let _currentRoom = null; // tracked for resize rebuilds
+
+let ACCESS_STATUS = "ON"; // "ON" | "OFF" — controlled from Google Sheet
+let _litSeatObserver = null; // IntersectionObserver for the float button
+let _litSeatEl = null; // currently highlighted seat element
+let _findBtn = null; // cached #findMySeat button
+let _cachedHeaderInner = null; // cached .col-header-inner for scroll sync
+let _scrollRafId = null; // rAF id for scroll-sync throttle
 
 /* ════════════════════════════════════════════════════════
    LOADING OVERLAY
@@ -128,9 +142,12 @@ function showLoading(visible) {
    ════════════════════════════════════════════════════════ */
 const CACHE_KEY = "examSeats_v3";
 
-function saveCache(students, rooms) {
+function saveCache(students, rooms, access) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ students, rooms }));
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ students, rooms, access }),
+    );
   } catch {}
 }
 
@@ -152,25 +169,35 @@ async function init() {
   if (cached) {
     STUDENTS = cached.students;
     ROOM_CONFIG = cached.rooms;
+    ACCESS_STATUS = cached.access ?? "ON";
     _studentsFingerprint = JSON.stringify(STUDENTS);
     _roomsFingerprint = JSON.stringify(ROOM_CONFIG);
     buildMaps();
-    buildClassroom(null);
-    setLastUpdated();
+    if (ACCESS_STATUS !== "ON") {
+      showAccessOff();
+    } else {
+      buildClassroom(null);
+      setLastUpdated();
+    }
     showLoading(false);
     startPolling();
   } else {
     showLoading(true);
     try {
-      const { students, rooms } = await fetchAllData();
+      const { students, rooms, access } = await fetchAllData();
       STUDENTS = students;
       ROOM_CONFIG = rooms;
+      ACCESS_STATUS = access;
       _studentsFingerprint = JSON.stringify(STUDENTS);
       _roomsFingerprint = JSON.stringify(ROOM_CONFIG);
-      saveCache(STUDENTS, ROOM_CONFIG);
+      saveCache(STUDENTS, ROOM_CONFIG, ACCESS_STATUS);
       buildMaps();
-      buildClassroom(null);
-      setLastUpdated();
+      if (ACCESS_STATUS !== "ON") {
+        showAccessOff();
+      } else {
+        buildClassroom(null);
+        setLastUpdated();
+      }
       showLoading(false);
       startPolling();
     } catch (err) {
@@ -190,21 +217,35 @@ function startPolling() {
 
 async function silentRefresh(forceTimestamp = false) {
   try {
-    const { students, rooms } = await fetchAllData();
+    const { students, rooms, access } = await fetchAllData();
     const newSF = JSON.stringify(students);
     const newRF = JSON.stringify(rooms);
+    const accessChanged = access !== ACCESS_STATUS;
 
-    if (newSF === _studentsFingerprint && newRF === _roomsFingerprint) {
+    if (
+      newSF === _studentsFingerprint &&
+      newRF === _roomsFingerprint &&
+      !accessChanged
+    ) {
       if (forceTimestamp) setLastUpdated(false);
       return;
     }
 
     STUDENTS = students;
     ROOM_CONFIG = rooms;
+    ACCESS_STATUS = access;
     _studentsFingerprint = newSF;
     _roomsFingerprint = newRF;
-    saveCache(STUDENTS, ROOM_CONFIG);
+    saveCache(STUDENTS, ROOM_CONFIG, ACCESS_STATUS);
     buildMaps();
+
+    if (ACCESS_STATUS !== "ON") {
+      showAccessOff();
+      return;
+    }
+
+    // Access is ON — restore UI if it was previously off
+    restoreAccessUI();
     setLastUpdated(true);
 
     const currentQuery = document.getElementById("searchInput").value.trim();
@@ -268,11 +309,38 @@ async function fetchAllData() {
   const url = `${CONFIG.APPS_SCRIPT_URL}?_cb=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store", redirect: "follow" });
   if (!res.ok) throw new Error(`HTTP ${res.status} — Apps Script fetch failed`);
-  const { students, rooms } = JSON.parse(await res.text());
+  const data = JSON.parse(await res.text());
+
+  // Support explicit `access` field from Apps Script, or scan the raw rows
+  const access =
+    data.access != null
+      ? String(data.access).trim().toUpperCase()
+      : extractAccess(data.students);
+
   return {
-    students: parseStudentsRows(students),
-    rooms: parseRoomsRows(rooms),
+    students: parseStudentsRows(data.students),
+    rooms: parseRoomsRows(data.rooms),
+    access,
   };
+}
+
+/* ────────────────────────────────────────────────────────
+   Extract the institution ON/OFF switch from the raw rows.
+   Scans the first four rows, right-to-left, for 'ON'/'OFF'.
+   In the default sheet layout col H row 2 holds this value.
+──────────────────────────────────────────────────────── */
+function extractAccess(rows) {
+  if (!rows || !rows.length) return "ON";
+  for (let i = 0; i < Math.min(rows.length, 4); i++) {
+    const row = rows[i] || [];
+    for (let j = row.length - 1; j >= 0; j--) {
+      const v = String(row[j] ?? "")
+        .trim()
+        .toUpperCase();
+      if (v === "ON" || v === "OFF") return v;
+    }
+  }
+  return "ON"; // default to accessible if cell is absent
 }
 
 /* ════════════════════════════════════════════════════════
@@ -285,18 +353,19 @@ function normalizeRoomName(name) {
 function parseStudentsRows(rows) {
   if (!rows || rows.length < 2) return [];
   return rows
-    .slice(1)
+    .slice(1) // skip title row (row 0 in the sheet)
     .map((cols) => {
-      const name = String(cols[0] ?? "").trim();
-      const row = parseInt(cols[4]);
+      // Sheet column layout: A=S.No, B=Name, C=Roll No, D=Class, E=Room, F=Col, G=Row
+      const name = String(cols[1] ?? "").trim();
+      const row = parseInt(cols[6]);
       const col = parseInt(cols[5]);
       if (!name || isNaN(row) || isNaN(col)) return null;
       return {
         name,
-        roll: String(cols[1] ?? "").trim() || "—",
-        class: String(cols[2] ?? "").trim() || "—",
-        room: String(cols[3] ?? "").trim() || "—",
-        roomKey: normalizeRoomName(cols[3]),
+        roll: String(cols[2] ?? "").trim() || "—",
+        class: String(cols[3] ?? "").trim() || "—",
+        room: String(cols[4] ?? "").trim() || "—",
+        roomKey: normalizeRoomName(cols[4]),
         row,
         col,
       };
@@ -315,9 +384,16 @@ function parseRoomsRows(rows) {
       String(cols[3] ?? "")
         .trim()
         .toLowerCase() || "single";
+    const address = String(cols[4] ?? "").trim() || "Not Found";
     if (!room || isNaN(numRows) || isNaN(physCols)) return;
     const key = normalizeRoomName(room);
-    config[key] = { rows: numRows, cols: physCols, type, displayName: room };
+    config[key] = {
+      rows: numRows,
+      cols: physCols,
+      type,
+      displayName: room,
+      address,
+    };
   });
   return config;
 }
@@ -464,6 +540,8 @@ function buildClassroom(roomName) {
     }
 
     colHeaderRowEl.appendChild(inner);
+    // Cache for scroll-sync — invalidated on every rebuild
+    _cachedHeaderInner = inner;
   }
 
   /* ── Desk rows ── */
@@ -644,45 +722,9 @@ function mkSeat(r, col, side, student, isPhantom = false) {
 
   el.append(badge, nameEl, classEl);
 
-  const tipText = `R${r} · C${col}`;
-
-  // ── Tap / click to show (1.5 s auto-dismiss) — works on all devices ──────────
-  // Hover is intentionally removed; the tooltip appears only on deliberate tap/click.
-  let _tapTimer = null;
-
-  function _triggerTip() {
-    if (_tapTimer) clearTimeout(_tapTimer);
-    _showTip(el, tipText);
-    _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
-    _tapTimer = _gTipHideTimer;
-  }
-
-  // Desktop: click
-  el.addEventListener("click", _triggerTip);
-
-  // Mobile: touchend (only if finger didn't scroll)
-  el.addEventListener(
-    "touchstart",
-    (e) => {
-      const t = e.changedTouches[0];
-      el._tx = t.clientX;
-      el._ty = t.clientY;
-    },
-    { passive: true },
-  );
-
-  el.addEventListener(
-    "touchend",
-    (e) => {
-      const t = e.changedTouches[0];
-      const dx = Math.abs(t.clientX - (el._tx || 0));
-      const dy = Math.abs(t.clientY - (el._ty || 0));
-      if (dx > 8 || dy > 8) return; // was a scroll, not a tap
-      e.preventDefault(); // prevent the click event from also firing
-      _triggerTip();
-    },
-    { passive: false },
-  );
+  // Store tip text as a data attribute — the actual event is handled by
+  // the delegated listener on .scroll-area (no per-seat closures).
+  el.dataset.tip = `R${r} · C${col}`;
 
   return el;
 }
@@ -700,7 +742,7 @@ sentinel.style.cssText =
 new IntersectionObserver(
   ([entry]) =>
     stickyWrapper?.classList.toggle("is-stuck", !entry.isIntersecting),
-  { threshold: 1.0 },
+  { threshold: 1.0, rootMargin: "-2px 0px 0px 0px" },
 ).observe(sentinel);
 
 /* ── COLUMN HEADER HORIZONTAL SCROLL SYNC ── */
@@ -709,16 +751,53 @@ document.getElementById("scrollArea").addEventListener(
   function () {
     // Hide the seat tooltip immediately on any scroll so it never floats over other elements.
     _hideTip();
-    // Use translateX on the inner wrapper — works on all browsers regardless of
-    // the parent's overflow:hidden, and is GPU-composited (no layout reflow).
-    const inner = document.querySelector(".col-header-inner");
-    if (inner) inner.style.transform = `translateX(-${this.scrollLeft}px)`;
+    // Throttle header translateX to one rAF per paint frame — prevents mid-frame misalignment
+    // on slow devices and avoids a full DOM query on every scroll event.
+    if (_scrollRafId) return;
+    const sl = this.scrollLeft;
+    _scrollRafId = requestAnimationFrame(() => {
+      _scrollRafId = null;
+      if (_cachedHeaderInner) _cachedHeaderInner.style.transform = `translateX(-${sl}px)`;
+    });
   },
   { passive: true },
 );
 
 // Also hide on window scroll (e.g. pulling the whole page up on mobile).
 window.addEventListener("scroll", _hideTip, { passive: true });
+
+/* ── DELEGATED SEAT TOOLTIP — single listener replaces per-seat closures ──
+   All seats write their tip text into data-tip so no closure is needed.    */
+const _scrollAreaEl = document.getElementById("scrollArea");
+
+_scrollAreaEl.addEventListener("click", (e) => {
+  const seat = e.target.closest(".seat:not(.seat--phantom)");
+  if (!seat || !seat.dataset.tip) return;
+  _showTip(seat, seat.dataset.tip);
+  if (_gTipHideTimer) clearTimeout(_gTipHideTimer);
+  _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
+});
+
+_scrollAreaEl.addEventListener("touchstart", (e) => {
+  const seat = e.target.closest(".seat:not(.seat--phantom)");
+  if (!seat) return;
+  const t = e.changedTouches[0];
+  seat.dataset.tx = t.clientX;
+  seat.dataset.ty = t.clientY;
+}, { passive: true });
+
+_scrollAreaEl.addEventListener("touchend", (e) => {
+  const seat = e.target.closest(".seat:not(.seat--phantom)");
+  if (!seat || !seat.dataset.tip) return;
+  const t = e.changedTouches[0];
+  const dx = Math.abs(t.clientX - +(seat.dataset.tx || 0));
+  const dy = Math.abs(t.clientY - +(seat.dataset.ty || 0));
+  if (dx > 8 || dy > 8) return;
+  e.preventDefault();
+  _showTip(seat, seat.dataset.tip);
+  if (_gTipHideTimer) clearTimeout(_gTipHideTimer);
+  _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
+}, { passive: false });
 
 /* ════════════════════════════════════════════════════════
    SEARCH
@@ -782,7 +861,7 @@ function doSearch(forceName) {
     resBody.innerHTML = matches
       .map(
         (m, i) => `
-      <div class="multi-result" onclick="selectMatch(${i})">
+      <div class="multi-result" data-index="${i}">
         <strong>${sanitize(m.name)}</strong>
         <span class="multi-class">${sanitize(m.class)}</span>
         <span class="multi-room">Room: ${sanitize(m.room)} &nbsp;|&nbsp; ${getSeatLabel(m)}</span>
@@ -823,6 +902,7 @@ function showResult(m) {
 
   const cfg = ROOM_CONFIG[m.roomKey];
   const isJoined = cfg?.type === "joined";
+  const address = cfg?.address || "Not Found";
 
   let seatDetail;
   if (isJoined) {
@@ -834,12 +914,20 @@ function showResult(m) {
   }
 
   setResultState(resultCard, "success");
-  resTitle.textContent = m.name;
+
+  // Name | Class header strip
+  resTitle.innerHTML = `
+    <div class="res-name-class-header">
+      <span class="res-name">${sanitize(m.name)}</span>
+      <span class="res-class-tag">${sanitize(m.class)}</span>
+    </div>`;
+
+  // Detail rows — order: Roll No, Seat, Room, Address
   resBody.innerHTML = `
-    <div class="res-detail"><span>Class</span><strong>${sanitize(m.class)}</strong></div>
     <div class="res-detail"><span>Roll No.</span><strong>${sanitize(m.roll)}</strong></div>
-    <div class="res-detail"><span>Room</span><strong>${sanitize(m.room)}</strong></div>
     <div class="res-detail"><span>Seat</span><strong>${seatDetail}</strong></div>
+    <div class="res-detail"><span>Room</span><strong>${sanitize(m.room)}</strong></div>
+    <div class="res-detail"><span>Address</span><strong>${sanitize(address)}</strong></div>
   `;
 
   buildClassroom(m.room);
@@ -859,7 +947,8 @@ function highlightSeat(m) {
   seatEl?.classList.add("lit");
   deskEl?.classList.add("glowing");
 
-  if (seatEl)
+  if (seatEl) {
+    // One-time scroll to center
     setTimeout(
       () =>
         seatEl.scrollIntoView({
@@ -869,6 +958,65 @@ function highlightSeat(m) {
         }),
       150,
     );
+    // Set up float button visibility tracking
+    setupSeatObserver(seatEl);
+  }
+}
+
+/* ── Float-button helpers ── */
+function _initFindBtn() {
+  if (_findBtn) return;
+  _findBtn = document.getElementById("findMySeat");
+  if (!_findBtn) return;
+  _findBtn.addEventListener("click", () => {
+    _litSeatEl?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "center",
+    });
+  });
+}
+
+function setupSeatObserver(seatEl) {
+  _initFindBtn();
+  // Disconnect any previous observer
+  if (_litSeatObserver) {
+    _litSeatObserver.disconnect();
+    _litSeatObserver = null;
+  }
+  if (!seatEl || !_findBtn) return;
+  _litSeatEl = seatEl;
+  _litSeatObserver = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        // Seat is back in view — animate out, then hide
+        if (_findBtn.classList.contains("visible")) {
+          _findBtn.classList.add("hiding");
+          _findBtn.classList.remove("visible");
+          _findBtn.addEventListener(
+            "animationend",
+            () => _findBtn.classList.remove("hiding"),
+            { once: true },
+          );
+        }
+      } else {
+        _findBtn.classList.remove("hiding");
+        _findBtn.classList.add("visible");
+      }
+    },
+    { threshold: 0.5 },
+  );
+  _litSeatObserver.observe(seatEl);
+}
+
+function hideFindBtn() {
+  _initFindBtn();
+  if (_litSeatObserver) {
+    _litSeatObserver.disconnect();
+    _litSeatObserver = null;
+  }
+  _litSeatEl = null;
+  if (_findBtn) _findBtn.classList.remove("visible");
 }
 
 /* ════════════════════════════════════════════════════════
@@ -884,7 +1032,7 @@ function renderSuggestions() {
       (m, i) => `
     <div class="suggestion-item${i === activeIndex ? " active" : ""}" data-index="${i}">
       ${sanitize(m.name)}
-      <div class="suggestion-roll">${sanitize(m.class)} &nbsp;|&nbsp; ${sanitize(m.room)}</div>
+      <div class="suggestion-roll">${sanitize(m.class)}</div>
     </div>`,
     )
     .join("");
@@ -972,20 +1120,59 @@ function clearHighlights() {
   document
     .querySelectorAll(".desk.glowing")
     .forEach((el) => el.classList.remove("glowing"));
+  hideFindBtn();
 }
 
-function showFetchError(err) {
+function showAccessOff() {
   const resultCard = document.getElementById("resultCard");
   const resTitle = document.getElementById("resTitle");
   const resBody = document.getElementById("resBody");
+
+  // Disable and dim the search input
+  const input = document.getElementById("searchInput");
+  if (input) {
+    input.disabled = true;
+    input.placeholder = "Seating is currently unavailable…";
+  }
+  document.getElementById("btnClear").style.display = "none";
+
+  // Show the notice card
   resultCard.style.display = "block";
   setResultState(resultCard, "error");
-  resTitle.textContent = "Could Not Load Data";
+  resTitle.innerHTML = "🔒 Access Unavailable";
   resBody.innerHTML = `
-    Could not reach the Apps Script Web App. Check that the deployment is
-    active and set to "Anyone" access.<br><br>
-    <small style="opacity:0.6">${sanitize(err.message)}</small>
+    The institution has not yet released the seating data for this session.<br>
+    <small style="opacity:0.65">Please check back later or contact your exam coordinator.</small>
   `;
+
+  // Hide the classroom grid
+  const cc = document.querySelector(".classroom-card");
+  if (cc) cc.style.display = "none";
+
+  // Collapse suggestions
+  const sb = document.getElementById("suggestions");
+  if (sb) sb.style.display = "none";
+}
+
+function restoreAccessUI() {
+  // Re-enable search input
+  const input = document.getElementById("searchInput");
+  if (input) {
+    input.disabled = false;
+    input.placeholder = "Enter your name…";
+  }
+
+  // Show classroom again
+  const cc = document.querySelector(".classroom-card");
+  if (cc) cc.style.display = "";
+
+  // Clear any stale result card (access-off notice or previous search)
+  const resultCard = document.getElementById("resultCard");
+  resultCard.style.display = "none";
+  setResultState(resultCard, null);
+
+  // Rebuild default classroom view
+  buildClassroom(null);
 }
 
 /* ── START ── */
