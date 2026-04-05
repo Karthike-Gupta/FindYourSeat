@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="./images/seat.png" />
     <title>Exam Seat Finder</title>
     <link rel="icon" type="image/png" href="./images/seat.png" sizes="64x64" />
     <link rel="manifest" href="./manifest.json" />
@@ -14,6 +17,7 @@
     />
     <link rel="stylesheet" href="./style.css" />
     <meta name="theme-color" content="#1a1a2e" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f2ea" />
   </head>
   <body>
     <div id="loadingOverlay" class="loading-overlay">
@@ -122,6 +126,24 @@
       <span>My Seat</span>
     </button>
 
+    <noscript>
+      <style>
+        #loadingOverlay { display: none !important; }
+        .noscript-msg {
+          position: fixed; inset: 0; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 1rem;
+          background: #0d0f1a; color: #e8eaf6; font-family: sans-serif;
+          text-align: center; padding: 2rem; z-index: 9999;
+        }
+        .noscript-msg h2 { font-size: 1.4rem; margin: 0; }
+        .noscript-msg p  { font-size: 0.9rem; color: #7b82a8; margin: 0; max-width: 320px; }
+      </style>
+      <div class="noscript-msg">
+        <div style="font-size:3rem">🎓</div>
+        <h2>JavaScript Required</h2>
+        <p>Exam Seat Finder needs JavaScript to load seating data. Please enable it in your browser settings and reload the page.</p>
+      </div>
+    </noscript>
     <script src="./script.js"></script>
   </body>
 </html>
