@@ -10,6 +10,33 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* ── GLOBAL SCROLLBAR — thin, no arrows ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.65);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(180, 120, 40, 0.42);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 120, 40, 0.68);
+}
+
 /* ══════════════════════════════════════════════
    DARK MODE (default)
    ══════════════════════════════════════════════ */
@@ -90,6 +117,9 @@ html {
 }
 [data-theme="light"] #searchInput:focus {
   background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(194, 122, 6, 0.4);
+  box-shadow: inset 0 0 20px rgba(194, 122, 6, 0.1);
+  animation: none;
 }
 [data-theme="light"] #searchInput::placeholder {
   color: #a08c70;
@@ -104,10 +134,12 @@ html {
 }
 [data-theme="light"] .suggestion-item {
   border-bottom-color: rgba(0, 0, 0, 0.05);
+  color: var(--text);
 }
 [data-theme="light"] .suggestion-item:hover,
 [data-theme="light"] .suggestion-item.active {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(194, 122, 6, 0.11);
+  color: var(--text);
 }
 [data-theme="light"] .res-detail {
   border-bottom-color: rgba(0, 0, 0, 0.06);
@@ -224,8 +256,10 @@ html {
   color: #7c3a00;
   box-shadow: 0 4px 18px rgba(194, 122, 6, 0.22);
 }
+
+/* FIX: fully opaque so page content doesn't bleed through in light mode */
 [data-theme="light"] .loading-overlay {
-  background: rgba(247, 242, 234, 0.88);
+  background: #f7f2ea;
 }
 [data-theme="light"] .bottom-row {
   border-top-color: rgba(0, 0, 0, 0.08);
@@ -265,7 +299,6 @@ html {
 
 /* ══════════════════════════════════════════════
    THEME TOGGLE
-   position:absolute inside header (header is position:relative)
    ══════════════════════════════════════════════ */
 .theme-toggle {
   position: absolute;
@@ -358,9 +391,12 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "DM Sans", sans-serif;
+  /* System fonts as fallback if Google Fonts fails to load */
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 body::before {
   content: "";
@@ -414,7 +450,7 @@ header {
 }
 
 h1 {
-  font-family: "Playfair Display", serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(1.5rem, 7vw, 3rem);
   font-weight: 700;
   line-height: 1.15;
@@ -464,35 +500,40 @@ h1 {
 #searchInput {
   width: 100%;
   background: rgba(255, 255, 255, 0.04);
-  border: none;
+  border: 1.5px solid transparent;
   border-radius: clamp(8px, 2vw, 11px);
   padding: 0.75rem 2.4rem 0.75rem 2.6rem;
   color: var(--text);
-  font-family: "DM Sans", sans-serif;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   font-size: clamp(0.82rem, 3vw, 1rem);
   font-weight: 500;
   outline: none;
-  box-shadow: inset 0 0 0px rgba(99, 102, 241, 0);
+  box-shadow: none;
   transition:
     background 0.35s ease,
-    box-shadow 0.35s ease;
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
 }
 #searchInput:focus {
   background: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.35);
   animation: none;
 }
 
-/* ── Idle breath glow ─────────────────────────────────────────────────────────
-   Animates opacity only — GPU-compositable, zero repaint cost on low-end devices.
-   The visual effect is a gentle pulse that draws attention to the empty input.  */
+/* Idle glow: pulses when the input is empty and unfocused */
 @keyframes searchIdleGlow {
-  0%,
-  100% {
-    opacity: 0.72;
+  0%, 100% {
+    border-color: rgba(99, 102, 241, 0.18);
+    box-shadow:
+      0 0 0 0px rgba(99, 102, 241, 0),
+      0 0 8px rgba(99, 102, 241, 0.08);
   }
   50% {
-    opacity: 1;
+    border-color: rgba(99, 102, 241, 0.62);
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 0.1),
+      0 0 18px rgba(99, 102, 241, 0.22);
   }
 }
 #searchInput:placeholder-shown:not(:focus) {
@@ -500,12 +541,17 @@ h1 {
 }
 
 @keyframes searchIdleGlowLight {
-  0%,
-  100% {
-    opacity: 0.7;
+  0%, 100% {
+    border-color: rgba(194, 122, 6, 0.18);
+    box-shadow:
+      0 0 0 0px rgba(194, 122, 6, 0),
+      0 0 8px rgba(194, 122, 6, 0.08);
   }
   50% {
-    opacity: 1;
+    border-color: rgba(194, 122, 6, 0.62);
+    box-shadow:
+      0 0 0 3px rgba(194, 122, 6, 0.1),
+      0 0 18px rgba(194, 122, 6, 0.22);
   }
 }
 [data-theme="light"] #searchInput:placeholder-shown:not(:focus) {
@@ -529,7 +575,7 @@ h1 {
   padding: 0.3rem 0.35rem;
   border-radius: 50%;
   cursor: pointer;
-  display: none; /* shown by JS when input has text */
+  display: none;
   transition:
     color 0.18s,
     background 0.18s;
@@ -557,18 +603,16 @@ h1 {
   z-index: 300;
   display: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-/* SUGGESTIONS — custom scrollbar */
-
-/* Firefox */
-.suggestions {
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.45) transparent;
 }
-
-/* Chrome / Safari / Edge */
 .suggestions::-webkit-scrollbar {
   width: 4px;
+}
+.suggestions::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .suggestions::-webkit-scrollbar-track {
   background: transparent;
@@ -580,8 +624,6 @@ h1 {
 .suggestions::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.7);
 }
-
-/* Light mode thumb */
 [data-theme="light"] .suggestions {
   scrollbar-color: rgba(180, 120, 40, 0.45) transparent;
 }
@@ -649,7 +691,7 @@ h1 {
 }
 
 .res-title {
-  font-family: "Playfair Display", serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(0.9rem, 3.5vw, 1.1rem);
   margin-bottom: 0.45rem;
 }
@@ -760,7 +802,7 @@ h1 {
   }
 }
 .loading-title {
-  font-family: "Playfair Display", serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(1.4rem, 4vw, 1.9rem);
   color: var(--text);
   margin: 0;
@@ -779,12 +821,20 @@ h1 {
   overflow: hidden;
   margin-top: 0.25rem;
 }
+
+/*
+  FIX: Use transform:scaleX instead of width so this animation runs
+  entirely on the GPU — no layout work per frame.
+  JS sets bar.style.transform = "scaleX(0.5)" etc. instead of width.
+*/
 .loading-bar-fill {
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: linear-gradient(90deg, #6366f1, var(--accent));
   border-radius: 99px;
-  transition: width 0.4s ease;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
 }
 .loading-sub {
   font-size: 0.72rem;
@@ -809,13 +859,12 @@ h1 {
   margin-bottom: clamp(0.65rem, 2vw, 1.1rem);
 }
 
-/* ── STICKY WRAPPER — blackboard + col-headers, both pinned together ── */
+/* ── STICKY WRAPPER — blackboard + col-headers pinned together ── */
 .sticky-wrapper {
   position: sticky;
   top: 0;
   z-index: 100;
   border-radius: 14px 14px 0 0;
-  /* Solid fallback for browsers / devices with poor backdrop-filter perf */
   background: rgba(13, 15, 26, 0.97);
   overflow: hidden;
   transition:
@@ -844,7 +893,7 @@ h1 {
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
-/* ── COLUMN HEADER ROW (pinned just below the blackboard) ── */
+/* ── COLUMN HEADER ROW ── */
 .col-header-wrapper {
   display: flex;
   align-items: center;
@@ -855,7 +904,7 @@ h1 {
   box-shadow:
     0 8px 28px rgba(0, 0, 0, 0.75),
     0 3px 10px rgba(0, 0, 0, 0.55),
-    0 1px 0px rgba(255, 255, 255, 0.05); /* lifts column bar above grid */
+    0 1px 0px rgba(255, 255, 255, 0.05);
 }
 #chCorner {
   width: var(--rnum-w);
@@ -864,15 +913,15 @@ h1 {
 .col-header-row {
   flex: 1;
   min-width: 0;
-  overflow: hidden; /* clips .col-header-inner as it translates on h-scroll */
+  overflow: hidden;
 }
-/* Inner grid layer — receives translateX(-scrollLeft) from the scroll handler.
-   GPU-composited via will-change so the transform never triggers layout.    */
+/* Receives translateX(-scrollLeft) from JS on horizontal scroll — GPU-composited */
 .col-header-inner {
   display: grid;
   gap: clamp(0.2rem, 0.8vw, 0.4rem);
   will-change: transform;
 }
+
 /* ── BLACKBOARD ── */
 .blackboard {
   background-color: #000;
@@ -926,26 +975,21 @@ h1 {
   margin-top: 0.6rem;
 }
 
-/* Single scroll container — handles both axes */
 .scroll-area {
   width: 100%;
   overflow: auto;
-  padding-bottom: clamp(
-    8px,
-    1.5vw,
-    14px
-  ); /* breathing room above the scrollbar */
-  padding-right: clamp(
-    6px,
-    1.5vw,
-    10px
-  ); /* keep last column clear of scrollbar */
+  padding-bottom: clamp(8px, 1.5vw, 14px);
+  padding-right: clamp(6px, 1.5vw, 10px);
 }
 
-/* Thin themed scrollbars */
 .scroll-area::-webkit-scrollbar {
   width: 4px;
-  height: 5px;
+  height: 4px;
+}
+.scroll-area::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .scroll-area::-webkit-scrollbar-track {
   background: transparent;
@@ -963,7 +1007,6 @@ h1 {
 [data-theme="light"] .scroll-area::-webkit-scrollbar-thumb:hover {
   background: rgba(180, 120, 40, 0.68);
 }
-/* Firefox */
 .scroll-area {
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
@@ -972,13 +1015,13 @@ h1 {
   scrollbar-color: rgba(180, 120, 40, 0.42) transparent;
 }
 
-/* Flat CSS grid — gridTemplateColumns set by JS */
+/* gridTemplateColumns set by JS based on room config */
 .grid-inner {
   display: grid;
   gap: clamp(0.2rem, 0.8vw, 0.4rem);
 }
 
-/* ── Row number — sticky LEFT (stays on horizontal scroll) ── */
+/* Row number — sticky left so it stays visible on horizontal scroll */
 .rnum {
   height: var(--desk-h);
   display: flex;
@@ -990,21 +1033,21 @@ h1 {
   opacity: 1;
   position: sticky;
   left: 0;
-  z-index: 15; /* above desk hover (z-index:10), below col-header strip (100) */
+  z-index: 15;
   background: var(--surface);
   box-shadow:
     6px 0 24px rgba(0, 0, 0, 0.7),
     3px 0 8px rgba(0, 0, 0, 0.5),
-    1px 0 0px rgba(255, 255, 255, 0.04); /* lifts row bar above grid */
+    1px 0 0px rgba(255, 255, 255, 0.04);
 }
 
-/* ── Corner — spacer matching rnum width, keeps header columns aligned ── */
+/* Spacer that keeps column headers aligned with the grid */
 .grid-corner {
   width: var(--rnum-w);
   flex-shrink: 0;
 }
 
-/* ── Column headers — inside sticky-wrapper, no sticky needed here ── */
+/* ── Column headers ── */
 .col-head {
   background: var(--surface);
   display: flex;
@@ -1045,7 +1088,7 @@ h1 {
   background: linear-gradient(145deg, #2a2f4a, #1a1e33);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
-  overflow: hidden; /* clips lit-seat glow to rounded corners; global _gTip is position:fixed so it is unaffected */
+  overflow: hidden;
   box-shadow:
     inset 0 1px 4px rgba(0, 0, 0, 0.45),
     0 3px 8px rgba(0, 0, 0, 0.35);
@@ -1054,7 +1097,7 @@ h1 {
     box-shadow 0.25s,
     z-index 0s;
   z-index: 1;
-  /* Isolate layout/style/paint per desk — huge win for large grids on low-end devices */
+  /* Isolate layout/paint per desk for large grid performance */
   contain: layout style paint;
 }
 .desk::before {
@@ -1063,7 +1106,6 @@ h1 {
   top: 0;
   left: 0;
   right: 0;
-  /* Height matches the badge — desk overflow:hidden clips corners to match desk radius */
   height: clamp(16px, 3.5vw, 22px);
   border-radius: 0;
   opacity: 0.88;
@@ -1080,7 +1122,7 @@ h1 {
   z-index: 10;
 }
 
-/* Joined desk */
+/* Joined desk (two students per desk) */
 .desk--joined::before {
   background: linear-gradient(90deg, #8b5a2b, #a47148);
 }
@@ -1096,7 +1138,7 @@ h1 {
   pointer-events: none;
 }
 
-/* Single desk */
+/* Single desk (one student per desk) */
 .desk--single {
   border-color: rgba(255, 255, 255, 0.08);
   border-width: 1px;
@@ -1128,8 +1170,6 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* top = strip height (clamp 16-22px) + 4-6px breathing gap
-     sides & bottom = desk-edge distance only                  */
   padding: clamp(22px, 5vw, 30px) clamp(0.15rem, 0.5vw, 0.25rem) 0.3rem;
   overflow: visible;
   cursor: default;
@@ -1142,8 +1182,6 @@ h1 {
   color: rgba(232, 234, 246, 0.7);
   word-break: normal;
   hyphens: none;
-  /* Horizontal padding only — keeps text away from desk side edges.
-     Vertical spacing handled by seat padding-top (strip zone) above. */
   padding: 0 clamp(0.18rem, 0.6vw, 0.35rem);
 }
 .seat-class {
@@ -1166,44 +1204,34 @@ h1 {
   opacity: 0.55;
 }
 
-/* ══════════════════════════════════════════════
-   FIXED-SIZE MODE
-   Activated only when physCols exceeds threshold:
-   mobile > 6 cols → .fixed-mobile on .grid-inner
-   desktop > 10 cols → .fixed-desktop on .grid-inner
-   ══════════════════════════════════════════════ */
+/* ── FIXED-SIZE MODE (activated by JS when columns exceed visible threshold) ── */
 .grid-inner.fixed-mobile .desk {
   border-width: 0.8px;
 }
 .grid-inner.fixed-mobile .seat {
-  /* push name below the desk strip (clamp 16–22 px) + a 3 px breathing gap */
   padding: calc(clamp(16px, 3.5vw, 22px) + 3px) 0.1rem 0.2rem;
 }
 .grid-inner.fixed-desktop .desk {
   border: none;
 }
 .grid-inner.fixed-desktop .seat {
-  /* push name below the desk strip (clamp 16–22 px) + a 4 px breathing gap */
   padding: calc(clamp(16px, 3.5vw, 22px) + 4px) 4px 4.8px;
 }
 
-/* ══════════════════════════════════════════════
-   GLOBAL SEAT TOOLTIP
-   position:fixed — never clipped by scroll containers
-   ══════════════════════════════════════════════ */
+/* ── GLOBAL SEAT TOOLTIP (position:fixed so it's never clipped by scroll containers) ── */
 .g-seat-tip {
   position: fixed;
   z-index: 9999;
   display: none;
-  height: clamp(16px, 3.5vw, 22px); /* matches strip/badge height */
-  align-items: center; /* vertical centre (activated via display:flex in JS) */
+  height: clamp(16px, 3.5vw, 22px);
+  align-items: center;
   background: rgba(10, 13, 32, 0.93);
   border: 1.5px solid rgba(165, 180, 252, 0.38);
   border-top: none;
   border-radius: 0 0 8px 8px;
   padding: 0 clamp(0.3rem, 1vw, 0.48rem);
   white-space: nowrap;
-  font-family: "DM Sans", sans-serif;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   font-size: var(--seat-roll-size);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1212,23 +1240,20 @@ h1 {
   pointer-events: none;
 }
 
-/* ── SEAT INFO BADGE ── */
-/* Hidden by default. Shown on .lit seats.
-   top:0 + height matching the brown strip → badge bottom = strip bottom exactly.
-   desk overflow:hidden clips the top corners to match the desk border-radius.   */
+/* ── SEAT INFO BADGE (visible only on the highlighted seat) ── */
 .seat-info-badge {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: clamp(16px, 3.5vw, 22px); /* must match .desk::before height */
+  height: clamp(16px, 3.5vw, 22px);
   display: flex;
   align-items: center;
   padding: 0 clamp(0.3rem, 1vw, 0.48rem);
   background: rgba(10, 13, 32, 0.92);
   border: 1.5px solid rgba(165, 180, 252, 0.35);
-  border-top: none; /* flush with desk top edge */
-  border-radius: 0 0 8px 8px; /* only bottom corners rounded */
+  border-top: none;
+  border-radius: 0 0 8px 8px;
   white-space: nowrap;
   font-size: var(--seat-roll-size);
   font-weight: 700;
@@ -1249,7 +1274,7 @@ h1 {
   box-shadow: 0 3px 10px rgba(245, 158, 11, 0.32);
 }
 
-/* ── LIT / HIGHLIGHTED SEAT ── */
+/* ── HIGHLIGHTED SEAT ── */
 .seat.lit {
   background: rgba(245, 158, 11, 0.22);
   animation: seatPulse 1.6s ease-in-out infinite;
@@ -1262,7 +1287,7 @@ h1 {
   opacity: 0.75;
   color: #ffe3b0;
 }
-/* Opacity-only pulse — GPU-compositable, triggers no repaint on low-end devices */
+/* Opacity-only pulse runs on the GPU — no layout or paint per frame */
 @keyframes seatPulse {
   0%,
   100% {
@@ -1273,7 +1298,7 @@ h1 {
   }
 }
 
-/* ── PHANTOM SEAT ── */
+/* ── PHANTOM SEAT (empty half of an odd-column joined desk) ── */
 .seat--phantom {
   visibility: hidden;
   pointer-events: none;
@@ -1334,7 +1359,7 @@ footer {
   opacity: 0.45;
 }
 
-/* ── Prevent text selection on seats ── */
+/* ── Prevent text selection on seat elements ── */
 .seat,
 .desk,
 .seat-name,
@@ -1344,7 +1369,13 @@ footer {
   -webkit-user-select: none;
 }
 
-/* ── prefers-reduced-motion ── */
+/* ── Re-enable text selection for the search input ── */
+#searchInput {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ── Respect reduced-motion preference ── */
 @media (prefers-reduced-motion: reduce) {
   .seat.lit {
     animation: none;
@@ -1352,7 +1383,8 @@ footer {
   #searchInput:placeholder-shown:not(:focus),
   [data-theme="light"] #searchInput:placeholder-shown:not(:focus) {
     animation: none;
-    opacity: 1;
+    border-color: transparent;
+    box-shadow: none;
   }
   .loading-logo {
     animation: none;
@@ -1373,7 +1405,7 @@ footer {
    RESPONSIVE BREAKPOINTS  (min supported: 375px)
    ══════════════════════════════════════════════ */
 
-/* ≤ 480px — mobile search layout */
+/* ≤ 480px */
 @media (max-width: 480px) {
   .search-card {
     padding: 0.85rem;
@@ -1383,7 +1415,7 @@ footer {
   }
 }
 
-/* ≤ 375px — minimum supported width tweaks */
+/* ≤ 375px */
 @media (max-width: 375px) {
   .container {
     padding: 1.25rem 0.55rem 1.75rem;
@@ -1426,7 +1458,7 @@ footer {
   border-bottom: 1px solid rgba(16, 185, 129, 0.18);
 }
 .res-name {
-  font-family: "Playfair Display", serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(1rem, 3.5vw, 1.15rem);
   font-weight: 600;
   color: var(--found);
@@ -1460,16 +1492,14 @@ footer {
 
 /* ══════════════════════════════════════════════
    FLOAT BUTTON — "📍 My Seat"
-   Appears fixed at bottom-right when the lit
-   seat scrolls off screen. Hides itself when
-   the seat comes back into view.
+   Appears fixed at bottom-right when the highlighted
+   seat scrolls off screen. Hidden by default.
    ══════════════════════════════════════════════ */
 .find-seat-btn {
   position: fixed;
   bottom: 1.5rem;
   right: 1.25rem;
   z-index: 450;
-  /* hidden by default — JS adds .visible */
   display: none;
   align-items: center;
   gap: 0.38rem;
@@ -1478,7 +1508,7 @@ footer {
   border: 1.5px solid rgba(245, 158, 11, 0.35);
   background: rgba(18, 20, 38, 0.95);
   color: var(--accent);
-  font-family: "DM Sans", sans-serif;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   font-size: clamp(0.75rem, 2.2vw, 0.84rem);
   font-weight: 600;
   cursor: pointer;
@@ -1505,7 +1535,6 @@ footer {
   display: flex;
   animation: seatBtnPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-/* Smooth exit — JS adds .hiding, removes .visible, then cleans up after animationend */
 .find-seat-btn.hiding {
   display: flex;
   animation: seatBtnDismiss 0.18s ease-in both;
@@ -1544,8 +1573,6 @@ footer {
     transform: scale(0.85) translateY(8px);
   }
 }
-
-/* Light-theme variant */
 [data-theme="light"] .find-seat-btn {
   background: rgba(255, 250, 235, 0.92);
   border-color: rgba(194, 122, 6, 0.38);
