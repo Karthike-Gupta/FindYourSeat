@@ -290,6 +290,7 @@ html {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   outline: none;
+  touch-action: manipulation;
 }
 @supports (backdrop-filter: blur(1px)) {
   .theme-toggle {
@@ -533,6 +534,9 @@ h1 {
     color 0.18s,
     background 0.18s;
   z-index: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 .btn-clear:hover {
   color: var(--text);
@@ -579,13 +583,13 @@ h1 {
 
 /* Light mode thumb */
 [data-theme="light"] .suggestions {
-  scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+  scrollbar-color: rgba(180, 120, 40, 0.45) transparent;
 }
 [data-theme="light"] .suggestions::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.35);
+  background: rgba(180, 120, 40, 0.45);
 }
 [data-theme="light"] .suggestions::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: rgba(180, 120, 40, 0.72);
 }
 
 .suggestion-item {
@@ -593,6 +597,8 @@ h1 {
   cursor: pointer;
   font-size: clamp(0.78rem, 2.3vw, 0.88rem);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .suggestion-item:last-child {
   border-bottom: none;
@@ -696,6 +702,8 @@ h1 {
   transition:
     background 0.18s,
     border-color 0.18s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .multi-result:hover {
   background: rgba(99, 102, 241, 0.15);
@@ -922,7 +930,6 @@ h1 {
 .scroll-area {
   width: 100%;
   overflow: auto;
-  -webkit-overflow-scrolling: touch;
   padding-bottom: clamp(
     8px,
     1.5vw,
@@ -951,7 +958,18 @@ h1 {
   background: rgba(99, 102, 241, 0.65);
 }
 [data-theme="light"] .scroll-area::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(180, 120, 40, 0.42);
+}
+[data-theme="light"] .scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 120, 40, 0.68);
+}
+/* Firefox */
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+}
+[data-theme="light"] .scroll-area {
+  scrollbar-color: rgba(180, 120, 40, 0.42) transparent;
 }
 
 /* Flat CSS grid — gridTemplateColumns set by JS */
@@ -1474,6 +1492,7 @@ footer {
   -webkit-tap-highlight-color: transparent;
   outline: none;
   animation: none;
+  touch-action: manipulation;
 }
 @supports (backdrop-filter: blur(1px)) {
   .find-seat-btn {
