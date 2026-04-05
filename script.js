@@ -1,4 +1,4 @@
-/* -- THEME: runs before DOM renders to prevent flash of wrong theme -- */
+/* Runs immediately (before DOM) to apply the saved theme and prevent any flash */
 (function () {
   const STORAGE_KEY = "examSeats_theme";
   const root = document.documentElement;
@@ -33,7 +33,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("themeToggle")?.addEventListener("click", toggleTheme);
 
-    // Sync board label after DOM loads (theme was applied before DOMContentLoaded)
+    // Sync board label after DOM loads (applyTheme ran before elements existed)
     const bbText = document.querySelector(".bb-text");
     if (bbText) {
       const isLight = root.getAttribute("data-theme") === "light";
@@ -49,21 +49,20 @@
     });
   });
 
-  // Follow OS theme changes only when user hasn't manually picked one
+  // Follow OS theme changes only if the user hasn't manually set one
   window.matchMedia?.("(prefers-color-scheme: light)").addEventListener("change", (e) => {
     if (!localStorage.getItem(STORAGE_KEY)) applyTheme(e.matches ? "light" : "dark");
   });
 })();
 
-/* -- CONFIG -- */
+/* ── CONFIG ── */
 const CONFIG = {
   APPS_SCRIPT_URL:
     "https://script.google.com/macros/s/AKfycbx8DbF6VRnie9hDGBTBvhaTbqxwudo69z7iYrlqkDhxqYGSBtt5DzENnt7ShOCWDYBg/exec",
-  // 25s keeps well under Google Apps Script's 30 concurrent-execution limit at 200 users
   POLL_INTERVAL: 25 * 1000,
 };
 
-/* -- STATE -- */
+/* ── STATE ── */
 let STUDENTS = [];
 let ROOM_CONFIG = {};
 let studentAt = {};
@@ -82,8 +81,9 @@ let _findBtn = null;
 let _cachedHeaderInner = null;
 let _scrollRafId = null;
 
-/* -- LOADING OVERLAY -- */
-function showLoading(visible) {
+/* ── LOADING OVERLAY ──
+   Pass immediate=true to skip the pre-delay (used when data is ready from cache). */
+function showLoading(visible, immediate = false) {
   const overlay = document.getElementById("loadingOverlay");
   if (!overlay) return;
 
@@ -93,34 +93,41 @@ function showLoading(visible) {
 
     const bar = document.getElementById("loadingBar");
     const msg = document.getElementById("loadingMsg");
+
+    // Each step sets the bar scale (0–1) and updates the status message
     const steps = [
-      { pct: 15, text: "Connecting to seating data…",  delay: 0    },
-      { pct: 40, text: "Fetching student records…",    delay: 1000  },
-      { pct: 65, text: "Loading room configuration…",  delay: 2200  },
-      { pct: 85, text: "Building classroom map…",      delay: 3600  },
-      { pct: 95, text: "Almost ready…",                delay: 4500  },
+      { scale: 0.15, text: "Connecting to seating data…", delay: 0    },
+      { scale: 0.40, text: "Fetching student records…",   delay: 1000  },
+      { scale: 0.65, text: "Loading room configuration…", delay: 2200  },
+      { scale: 0.85, text: "Building classroom map…",     delay: 3600  },
+      { scale: 0.95, text: "Almost ready…",               delay: 4500  },
     ];
 
-    if (bar) bar.style.width = "0%";
-    _loadingTimers = steps.map(({ pct, text, delay }) =>
+    if (bar) bar.style.transform = "scaleX(0)";
+    _loadingTimers = steps.map(({ scale, text, delay }) =>
       setTimeout(() => {
-        if (bar) bar.style.width = `${pct}%`;
+        if (bar) bar.style.transform = `scaleX(${scale})`;
         if (msg) msg.textContent = text;
       }, delay)
     );
   } else {
     _loadingTimers.forEach(clearTimeout);
     _loadingTimers = [];
+
     const bar = document.getElementById("loadingBar");
-    if (bar) bar.style.width = "100%";
-    setTimeout(() => {
+    if (bar) bar.style.transform = "scaleX(1)";
+
+    const hide = () => {
       overlay.style.opacity = "0";
       setTimeout(() => { overlay.style.display = "none"; }, 500);
-    }, 300);
+    };
+
+    // FIX: no artificial pre-delay when data was already cached
+    immediate ? hide() : setTimeout(hide, 300);
   }
 }
 
-/* -- CACHE -- */
+/* ── CACHE ── */
 const CACHE_KEY = "examSeats_v3";
 
 function saveCache(students, rooms, access) {
@@ -138,8 +145,9 @@ function loadCache() {
   }
 }
 
-/* -- INIT: stale-while-revalidate
-   Returning visitors see cached data instantly; fresh data loads in background -- */
+/* ── INIT ──
+   Stale-while-revalidate: returning visitors see cached data instantly
+   while fresh data loads in the background. */
 async function init() {
   const cached = loadCache();
 
@@ -155,7 +163,7 @@ async function init() {
     } else {
       buildClassroom(null);
     }
-    showLoading(false);
+    showLoading(false, true); // immediate — data was ready instantly from cache
     startPolling();
   } else {
     showLoading(true);
@@ -182,7 +190,7 @@ async function init() {
   }
 }
 
-/* -- POLLING -- */
+/* ── POLLING ── */
 function startPolling() {
   if (_pollTimer) clearInterval(_pollTimer);
   _pollTimer = setInterval(silentRefresh, CONFIG.POLL_INTERVAL);
@@ -213,26 +221,26 @@ async function silentRefresh() {
 
     restoreAccessUI();
 
-    const currentQuery = document.getElementById("searchInput").value.trim();
+    const currentQuery = DOM.searchInput.value.trim();
     if (currentQuery) doSearch(currentQuery);
     else buildClassroom(_currentRoom);
   } catch {
-    /* silent — polling errors should not disrupt the user */
+    // Polling errors are silent — never disrupt the user
   }
 }
 
-/* -- RESIZE: rebuild grid on orientation change or window resize -- */
+/* ── RESIZE: debounced grid rebuild on orientation change or keyboard open/close ── */
 let _resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(() => {
-    const query = document.getElementById("searchInput").value.trim();
+    const query = DOM.searchInput.value.trim();
     if (query) doSearch(query);
     else buildClassroom(_currentRoom);
   }, 250);
 });
 
-/* -- FETCH -- */
+/* ── FETCH ── */
 async function fetchAllData() {
   const url = `${CONFIG.APPS_SCRIPT_URL}?_cb=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store", redirect: "follow" });
@@ -251,7 +259,7 @@ async function fetchAllData() {
   };
 }
 
-/* Scans the first 4 rows (right-to-left) for ON/OFF — matches sheet layout where col H row 2 holds the switch */
+/* Scans the first 4 rows right-to-left for an ON/OFF access switch */
 function extractAccess(rows) {
   if (!rows || !rows.length) return "ON";
   for (let i = 0; i < Math.min(rows.length, 4); i++) {
@@ -264,12 +272,12 @@ function extractAccess(rows) {
   return "ON";
 }
 
-/* -- PARSERS -- */
+/* ── PARSERS ── */
 function normalizeRoomName(name) {
   return (name || "").trim().toLowerCase();
 }
 
-/* Sheet column layout: A=S.No, B=Name, C=Roll No, D=Class, E=Room, F=Col, G=Row */
+/* Sheet columns: A=S.No, B=Name, C=Roll No, D=Class, E=Room, F=Col, G=Row */
 function parseStudentsRows(rows) {
   if (!rows || rows.length < 2) return [];
   return rows
@@ -307,7 +315,7 @@ function parseRoomsRows(rows) {
   return config;
 }
 
-/* -- LOOKUP MAPS -- */
+/* ── LOOKUP MAPS ── */
 function buildMaps() {
   studentAt = {};
   roomsData = {};
@@ -319,23 +327,23 @@ function buildMaps() {
   });
 }
 
-/* -- CLASSROOM BUILDER -- */
+/* ── CLASSROOM BUILDER ── */
 let _rowScrollRAF = null;
 
 function buildClassroom(roomName) {
   _currentRoom = roomName;
 
-  const scrollAreaEl  = document.getElementById("scrollArea");
-  const gridInnerEl   = document.getElementById("gridInner");
+  const scrollAreaEl   = document.getElementById("scrollArea");
+  const gridInnerEl    = document.getElementById("gridInner");
   const colHeaderRowEl = document.getElementById("colHeaderRow");
-  const roomLabel     = document.getElementById("roomLabel");
+  const roomLabel      = document.getElementById("roomLabel");
 
   if (_rowScrollRAF !== null) {
     cancelAnimationFrame(_rowScrollRAF);
     _rowScrollRAF = null;
   }
 
-  // Reset grid state
+  // Clear previous grid
   gridInnerEl.innerHTML = "";
   scrollAreaEl.style.maxHeight = "";
   scrollAreaEl.style.overflowY = "";
@@ -358,13 +366,11 @@ function buildClassroom(roomName) {
     ? "Room: " + (cfg?.displayName || roomName)
     : "Classroom — Top-Down View";
 
-  /* Responsive sizing:
-     t=0 at ≤480px (compact), t=1 at ≥1200px (full desktop), linear between */
+  // Responsive interpolation: t=0 at ≤480px, t=1 at ≥1200px
   const iW       = window.innerWidth;
   const isMobile = iW <= 480;
   const t        = Math.max(0, Math.min(1, (iW - 480) / (1200 - 480)));
 
-  // Scroll threshold: 6 columns on mobile → 10 on desktop
   const BASE_MAX_SEATS = Math.round(6 + 4 * t);
   const MAX_VIS_COLS   = isJoined ? Math.floor(BASE_MAX_SEATS / 2) : BASE_MAX_SEATS;
   const MAX_VIS_ROWS   = 15;
@@ -372,7 +378,6 @@ function buildClassroom(roomName) {
 
   const gapPx = Math.min(Math.max(3.2, iW * 0.008), 6.4);
 
-  // Desk dimensions interpolated between mobile and desktop values
   const FIXED_SEAT_W = 45.52 + (115   - 45.52) * t;
   const FIXED_DESK_H = 64    + (96    - 64)    * t;
   const FIXED_DESK_W = isJoined ? FIXED_SEAT_W * 2 : FIXED_SEAT_W;
@@ -390,7 +395,7 @@ function buildClassroom(roomName) {
     gridInnerEl.style.gridTemplateColumns = `var(--rnum-w) repeat(${physCols}, minmax(${MIN_DESK_W}px, 1fr))`;
   }
 
-  // Column headers — translated horizontally on scroll to stay aligned with the grid
+  // Build column headers
   if (colHeaderRowEl) {
     const inner = document.createElement("div");
     inner.className = "col-header-inner";
@@ -422,11 +427,11 @@ function buildClassroom(roomName) {
     for (let c = 1; c <= physCols; c++) {
       let deskEl;
       if (isJoined) {
-        const leftCol       = 2 * c - 1;
-        const rightCol      = 2 * c;
+        const leftCol        = 2 * c - 1;
+        const rightCol       = 2 * c;
         const isPhantomRight = cfg && cfg.cols % 2 !== 0 && c === physCols;
-        const leftStu       = roomKey ? studentAt[`${roomKey}-${r}-${leftCol}`]  || null : null;
-        const rightStu      = !isPhantomRight && roomKey
+        const leftStu        = roomKey ? studentAt[`${roomKey}-${r}-${leftCol}`]  || null : null;
+        const rightStu       = !isPhantomRight && roomKey
           ? studentAt[`${roomKey}-${r}-${rightCol}`] || null
           : null;
         deskEl = mkJoinedDesk(r, c, leftStu, rightStu, leftCol, rightCol, isPhantomRight);
@@ -438,14 +443,14 @@ function buildClassroom(roomName) {
     }
   }
 
-  // Cap vertical height when rows exceed MAX_VIS_ROWS
+  // Cap visible height when rows exceed MAX_VIS_ROWS
   if (maxRow > MAX_VIS_ROWS) {
     if (needsHScroll) {
       const capH = MAX_VIS_ROWS * (FIXED_DESK_H + gapPx);
       scrollAreaEl.style.maxHeight = `${capH}px`;
       scrollAreaEl.style.overflowY = "auto";
     } else {
-      // Fluid mode: desk height is CSS-driven, measure after paint
+      // Fluid mode: desk height is CSS-driven, so measure it after paint
       _rowScrollRAF = requestAnimationFrame(() => {
         _rowScrollRAF = null;
         const firstDesk = gridInnerEl.querySelector(".desk");
@@ -465,7 +470,7 @@ function getMaxRow(roomKey) {
     : 8;
 }
 
-/* -- DESK BUILDERS -- */
+/* ── DESK BUILDERS ── */
 function mkJoinedDesk(r, physCol, leftStu, rightStu, leftCol, rightCol, isPhantomRight = false) {
   const desk = document.createElement("div");
   desk.className = "desk desk--joined";
@@ -492,11 +497,11 @@ function mkSeat(r, col, side, student, isPhantom = false) {
 
   if (isPhantom) return el;
 
-  const badge   = document.createElement("div");
+  const badge = document.createElement("div");
   badge.className = "seat-info-badge";
   badge.textContent = `R${r} · C${col}`;
 
-  const nameEl  = document.createElement("div");
+  const nameEl = document.createElement("div");
   nameEl.className = "seat-name";
   nameEl.textContent = student?.name || "";
 
@@ -509,7 +514,7 @@ function mkSeat(r, col, side, student, isPhantom = false) {
   return el;
 }
 
-/* -- STICKY BLACKBOARD: adds shadow when the wrapper scrolls past the top -- */
+/* ── STICKY BLACKBOARD: adds shadow when it sticks to the top of the viewport ── */
 const stickyHeader  = document.getElementById("stickyHeader");
 const stickyWrapper = stickyHeader?.closest(".sticky-wrapper");
 const sentinel = document.createElement("div");
@@ -520,7 +525,7 @@ new IntersectionObserver(
   { threshold: 1.0, rootMargin: "-2px 0px 0px 0px" }
 ).observe(sentinel);
 
-/* -- COLUMN HEADER SCROLL SYNC: translateX mirrors scrollLeft via rAF -- */
+/* ── COLUMN HEADER SCROLL SYNC: mirrors scrollLeft via rAF (GPU-composited) ── */
 document.getElementById("scrollArea").addEventListener(
   "scroll",
   function () {
@@ -537,9 +542,8 @@ document.getElementById("scrollArea").addEventListener(
 
 window.addEventListener("scroll", _hideTip, { passive: true });
 
-/* -- GLOBAL SEAT TOOLTIP -- */
-const TOOLTIP_OFFSET_PX = 3;
-const TOOLTIP_TAP_MS    = 1500;
+/* ── GLOBAL SEAT TOOLTIP ── */
+const TOOLTIP_TAP_MS = 1500;
 
 const _gTip = (() => {
   const t = document.createElement("div");
@@ -553,29 +557,37 @@ const _gTip = (() => {
 
 let _gTipHideTimer = null;
 
-function _showTip(anchorEl, text) {
-  // Skip tooltip on the highlighted seat — its badge already shows info
-  if (anchorEl.classList.contains("lit")) return;
+/*
+  FIX: Cache tooltip widths by label text so we only force a layout reflow
+  once per unique label, not on every tap.
+*/
+const _tipWidthCache = new Map();
 
+function _showTip(anchorEl, text) {
+  if (anchorEl.classList.contains("lit")) return;
   if (_gTipHideTimer) { clearTimeout(_gTipHideTimer); _gTipHideTimer = null; }
 
   _gTip.textContent = text;
-  _gTip.style.cssText = "display:flex;visibility:hidden;left:-9999px;top:-9999px;";
 
-  const tipW = _gTip.offsetWidth;
+  // Measure width only the first time we see this label
+  if (!_tipWidthCache.has(text)) {
+    _gTip.style.cssText = "display:flex;visibility:hidden;left:-9999px;top:-9999px;";
+    _tipWidthCache.set(text, _gTip.offsetWidth);
+  }
+
+  const tipW = _tipWidthCache.get(text);
   const rect = anchorEl.getBoundingClientRect();
-  let top  = rect.top;
   let left = rect.left + rect.width / 2 - tipW / 2;
   left = Math.max(4, Math.min(left, window.innerWidth - tipW - 4));
 
-  _gTip.style.cssText = `display:flex;top:${top}px;left:${left}px;`;
+  _gTip.style.cssText = `display:flex;top:${rect.top}px;left:${left}px;`;
 }
 
 function _hideTip() {
   _gTip.style.display = "none";
 }
 
-// Delegated seat tooltip — single listener instead of per-seat closures
+/* Delegated tooltip listeners — single handler instead of per-seat closures */
 const _scrollAreaEl = document.getElementById("scrollArea");
 
 _scrollAreaEl.addEventListener("click", (e) => {
@@ -586,6 +598,7 @@ _scrollAreaEl.addEventListener("click", (e) => {
   _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
 });
 
+// Record touch start position to distinguish taps from scrolls
 _scrollAreaEl.addEventListener("touchstart", (e) => {
   const seat = e.target.closest(".seat:not(.seat--phantom)");
   if (!seat) return;
@@ -600,21 +613,32 @@ _scrollAreaEl.addEventListener("touchend", (e) => {
   const t  = e.changedTouches[0];
   const dx = Math.abs(t.clientX - +(seat.dataset.tx || 0));
   const dy = Math.abs(t.clientY - +(seat.dataset.ty || 0));
-  if (dx > 8 || dy > 8) return; // ignore scroll-like touches
+  if (dx > 8 || dy > 8) return; // not a tap — let scroll proceed normally
   e.preventDefault();
   _showTip(seat, seat.dataset.tip);
   if (_gTipHideTimer) clearTimeout(_gTipHideTimer);
   _gTipHideTimer = setTimeout(_hideTip, TOOLTIP_TAP_MS);
 }, { passive: false });
 
-/* -- SEARCH -- */
+/* ── SEARCH ── */
+
+/* DOM references cached once at startup */
+const DOM = {
+  searchInput: document.getElementById("searchInput"),
+  resultCard:  document.getElementById("resultCard"),
+  resTitle:    document.getElementById("resTitle"),
+  resBody:     document.getElementById("resBody"),
+  btnClear:    document.getElementById("btnClear"),
+};
+
+let lastShownRoll     = null;  // prevents re-rendering the same student card
+let lastSearchedQuery = "";    // prevents re-running the same search on resize
+let isEditingSearch   = false; // true while the user has focus in the search bar
+
+/* Single-pass HTML sanitizer */
+const ESCAPE_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 function sanitize(str) {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ESCAPE_MAP[c]);
 }
 
 function normalize(str) {
@@ -624,57 +648,58 @@ function normalize(str) {
 const RC_STATES = ["success", "error", "multi"];
 
 function setResultState(card, state) {
-  RC_STATES.forEach((s) => card.classList.remove(s));
+  card.classList.remove(...RC_STATES);
   if (state) card.classList.add(state);
 }
 
 function doSearch(forceName) {
-  const raw = forceName ?? document.getElementById("searchInput").value.trim();
+  const raw = forceName ?? DOM.searchInput.value.trim();
   const q   = normalize(raw);
+
+  // Skip if the same query is already displayed (prevents spurious re-renders on resize)
+  if (q === lastSearchedQuery && !forceName) return;
+  lastSearchedQuery = q;
+
+  lastShownRoll = null;
   clearHighlights();
 
-  const resultCard = document.getElementById("resultCard");
-  const resTitle   = document.getElementById("resTitle");
-  const resBody    = document.getElementById("resBody");
-
-  document.getElementById("btnClear").style.display = raw ? "block" : "none";
+  DOM.btnClear.style.display   = raw ? "block" : "none";
   suggestionsBox.style.display = "none";
 
   if (!q) {
-    resultCard.style.display = "none";
+    DOM.resultCard.style.display = "none";
+    lastSearchedQuery = "";
     return;
   }
 
-  const matches = STUDENTS.filter((s) => {
-    const n = s._normalized;
-    return n.includes(q) || q.includes(n);
-  });
+  const matches = STUDENTS.filter((s) => s._normalized.includes(q));
 
-  resultCard.style.display = "block";
-  setResultState(resultCard, null);
+  DOM.resultCard.style.display = "block";
+  setResultState(DOM.resultCard, null);
 
   if (!matches.length) {
-    setResultState(resultCard, "error");
-    resTitle.textContent = "Not Found";
-    resBody.innerHTML = `No match for "<strong>${sanitize(raw)}</strong>". Check spelling and try again.`;
+    setResultState(DOM.resultCard, "error");
+    DOM.resTitle.textContent = "Not Found";
+    DOM.resBody.innerHTML    = `No match for "<strong>${sanitize(raw)}</strong>". Check spelling and try again.`;
     buildClassroom(null);
     return;
   }
 
   if (matches.length > 1) {
-    setResultState(resultCard, "multi");
-    resTitle.textContent = `${matches.length} students found`;
-    resBody.innerHTML = matches
+    setResultState(DOM.resultCard, "multi");
+    DOM.resTitle.textContent = `${matches.length} students found`;
+    DOM.resBody.innerHTML    = matches
       .map(
         (m, i) => `
       <div class="multi-result" data-index="${i}">
         <strong>${sanitize(m.name)}</strong>
         <span class="multi-class">${sanitize(m.class)}</span>
-        <span class="multi-room">Room: ${sanitize(m.room)} &nbsp;|&nbsp; ${getSeatLabel(m)}</span>
+        <span class="multi-room">Room: ${sanitize(m.room)} &nbsp;|&nbsp; ${getSeatDetail(m)}</span>
       </div>`
       )
       .join("");
-    lastMatches = matches;
+    lastMatches   = matches;
+    lastShownRoll = null;
     buildClassroom(matches[0].room);
     matches.forEach(highlightSeat);
     return;
@@ -685,49 +710,44 @@ function doSearch(forceName) {
 
 function selectMatch(idx) {
   const m = lastMatches[idx];
-  if (!m) return;
-  showResult(m);
+  if (m) showResult(m);
 }
 
-function getSeatLabel(m) {
+/* Returns a human-readable seat label.
+   verbose=true  → "Row 2 · Bench 3 · Left Seat"
+   verbose=false → "R2 · Bench 3 · Left" */
+function getSeatDetail(m, verbose = false) {
   const cfg = ROOM_CONFIG[m.roomKey];
   if (cfg?.type === "joined") {
     const bench = Math.ceil(m.col / 2);
     const side  = m.col % 2 !== 0 ? "Left" : "Right";
-    return `R${m.row} · Bench ${bench} · ${side}`;
+    return verbose
+      ? `Row ${m.row} · Bench ${bench} · ${side} Seat`
+      : `R${m.row} · Bench ${bench} · ${side}`;
   }
-  return `R${m.row} · Col ${m.col}`;
+  return verbose ? `Row ${m.row} · Col ${m.col}` : `R${m.row} · Col ${m.col}`;
 }
 
+function getSeatLabel(m) { return getSeatDetail(m, false); }
+
 function showResult(m) {
-  const resultCard = document.getElementById("resultCard");
-  const resTitle   = document.getElementById("resTitle");
-  const resBody    = document.getElementById("resBody");
+  if (m.roll === lastShownRoll) return;
+  lastShownRoll = m.roll;
 
-  const cfg      = ROOM_CONFIG[m.roomKey];
-  const isJoined = cfg?.type === "joined";
-  const address  = cfg?.address || "Not Found";
+  const cfg     = ROOM_CONFIG[m.roomKey];
+  const address = cfg?.address || "Not Found";
 
-  let seatDetail;
-  if (isJoined) {
-    const bench = Math.ceil(m.col / 2);
-    const side  = m.col % 2 !== 0 ? "Left" : "Right";
-    seatDetail  = `Row ${m.row} · Bench ${bench} · ${side} Seat`;
-  } else {
-    seatDetail = `Row ${m.row} · Col ${m.col}`;
-  }
+  setResultState(DOM.resultCard, "success");
 
-  setResultState(resultCard, "success");
-
-  resTitle.innerHTML = `
+  DOM.resTitle.innerHTML = `
     <div class="res-name-class-header">
       <span class="res-name">${sanitize(m.name)}</span>
       <span class="res-class-tag">${sanitize(m.class)}</span>
     </div>`;
 
-  resBody.innerHTML = `
+  DOM.resBody.innerHTML = `
     <div class="res-detail"><span>Roll No.</span><strong>${sanitize(m.roll)}</strong></div>
-    <div class="res-detail"><span>Seat</span><strong>${seatDetail}</strong></div>
+    <div class="res-detail"><span>Seat</span><strong>${getSeatDetail(m, true)}</strong></div>
     <div class="res-detail"><span>Room</span><strong>${sanitize(m.room)}</strong></div>
     <div class="res-detail"><span>Address</span><strong>${sanitize(address)}</strong></div>
   `;
@@ -748,15 +768,19 @@ function highlightSeat(m) {
   deskEl?.classList.add("glowing");
 
   if (seatEl) {
-    setTimeout(
-      () => seatEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }),
-      150
-    );
+    // Guard: don't scroll while the user is typing — the mobile keyboard
+    // triggers a resize which would yank the page away from the input.
+    if (!isEditingSearch) {
+      setTimeout(
+        () => seatEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }),
+        150
+      );
+    }
     setupSeatObserver(seatEl);
   }
 }
 
-/* -- FLOAT BUTTON ("📍 My Seat") -- */
+/* ── FLOAT BUTTON ("📍 My Seat") ── */
 function _initFindBtn() {
   if (_findBtn) return;
   _findBtn = document.getElementById("findMySeat");
@@ -766,7 +790,7 @@ function _initFindBtn() {
   });
 }
 
-// Shows the float button when the highlighted seat scrolls out of view
+/* Shows the float button when the highlighted seat scrolls out of view */
 function setupSeatObserver(seatEl) {
   _initFindBtn();
   if (_litSeatObserver) { _litSeatObserver.disconnect(); _litSeatObserver = null; }
@@ -797,7 +821,7 @@ function hideFindBtn() {
   if (_findBtn) _findBtn.classList.remove("visible");
 }
 
-/* -- AUTOCOMPLETE -- */
+/* ── AUTOCOMPLETE ── */
 const suggestionsBox = document.getElementById("suggestions");
 let activeIndex    = 0;
 let currentMatches = [];
@@ -815,11 +839,11 @@ function renderSuggestions() {
   suggestionsBox.style.display = currentMatches.length ? "block" : "none";
 }
 
-document.getElementById("searchInput").addEventListener("input", function () {
+DOM.searchInput.addEventListener("input", function () {
   const query = normalize(this.value);
 
-  // Keep the clear button in sync with the input value at all times
-  document.getElementById("btnClear").style.display = this.value ? "block" : "none";
+  DOM.btnClear.style.display = this.value ? "block" : "none";
+  if (!this.value) lastSearchedQuery = "";
 
   if (!query) {
     suggestionsBox.style.display = "none";
@@ -847,16 +871,16 @@ suggestionsBox.addEventListener("click", (e) => {
 
 function selectSuggestion(idx) {
   if (!currentMatches[idx]) return;
-  document.getElementById("searchInput").value = currentMatches[idx].name;
+  DOM.searchInput.value = currentMatches[idx].name;
   suggestionsBox.style.display = "none";
   doSearch(currentMatches[idx].name);
 }
 
-document.getElementById("searchInput").addEventListener("keydown", function (e) {
+DOM.searchInput.addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     e.preventDefault();
+    this.blur(); // blur before doSearch so isEditingSearch=false when scroll runs
     currentMatches.length ? selectSuggestion(activeIndex) : doSearch();
-    this.blur();
     return;
   }
   if (e.key === "Escape") { clearSearch(); return; }
@@ -871,25 +895,29 @@ document.getElementById("searchInput").addEventListener("keydown", function (e) 
   renderSuggestions();
 });
 
-// Close suggestions when clicking outside the search area
+DOM.searchInput.addEventListener("focus", () => { isEditingSearch = true; });
+DOM.searchInput.addEventListener("blur",  () => { isEditingSearch = false; });
+
+// Close suggestions when clicking anywhere outside the search area
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".search-wrap")) suggestionsBox.style.display = "none";
 });
 
-/* -- HELPERS -- */
+/* ── HELPERS ── */
 function clearSearch() {
-  document.getElementById("searchInput").value = "";
-  document.getElementById("btnClear").style.display = "none";
-  document.getElementById("resultCard").style.display = "none";
-  suggestionsBox.style.display = "none";
-  currentMatches = [];
-  activeIndex    = 0;
+  DOM.searchInput.value            = "";
+  DOM.btnClear.style.display       = "none";
+  DOM.resultCard.style.display     = "none";
+  suggestionsBox.style.display     = "none";
+  currentMatches    = [];
+  activeIndex       = 0;
+  lastSearchedQuery = "";
+  lastShownRoll     = null;
   clearHighlights();
   buildClassroom(null);
 }
 
-// Wire the clear (✕) button to clearSearch
-document.getElementById("btnClear").addEventListener("click", clearSearch);
+DOM.btnClear.addEventListener("click", clearSearch);
 
 function clearHighlights() {
   document.querySelectorAll(".seat.lit").forEach((el) => el.classList.remove("lit"));
@@ -898,32 +926,22 @@ function clearHighlights() {
 }
 
 function showFetchError(err) {
-  const resultCard = document.getElementById("resultCard");
-  const resTitle   = document.getElementById("resTitle");
-  const resBody    = document.getElementById("resBody");
-  resultCard.style.display = "block";
-  setResultState(resultCard, "error");
-  resTitle.textContent = "Connection Error";
-  resBody.innerHTML = `Could not load seating data. Please check your connection and refresh.<br>
+  DOM.resultCard.style.display = "block";
+  setResultState(DOM.resultCard, "error");
+  DOM.resTitle.textContent = "Connection Error";
+  DOM.resBody.innerHTML = `Could not load seating data. Please check your connection and refresh.<br>
     <small style="opacity:0.6">${sanitize(String(err))}</small>`;
 }
 
 function showAccessOff() {
-  const resultCard = document.getElementById("resultCard");
-  const resTitle   = document.getElementById("resTitle");
-  const resBody    = document.getElementById("resBody");
+  DOM.searchInput.disabled     = true;
+  DOM.searchInput.placeholder  = "Seating is currently unavailable…";
+  DOM.btnClear.style.display   = "none";
 
-  const input = document.getElementById("searchInput");
-  if (input) {
-    input.disabled = true;
-    input.placeholder = "Seating is currently unavailable…";
-  }
-  document.getElementById("btnClear").style.display = "none";
-
-  resultCard.style.display = "block";
-  setResultState(resultCard, "error");
-  resTitle.innerHTML = "🔒 Access Unavailable";
-  resBody.innerHTML = `
+  DOM.resultCard.style.display = "block";
+  setResultState(DOM.resultCard, "error");
+  DOM.resTitle.innerHTML = "🔒 Access Unavailable";
+  DOM.resBody.innerHTML  = `
     The institution has not yet released the seating data for this session.<br>
     <small style="opacity:0.65">Please check back later or contact your exam coordinator.</small>
   `;
@@ -936,21 +954,17 @@ function showAccessOff() {
 }
 
 function restoreAccessUI() {
-  const input = document.getElementById("searchInput");
-  if (input) {
-    input.disabled = false;
-    input.placeholder = "Enter your name…";
-  }
+  DOM.searchInput.disabled    = false;
+  DOM.searchInput.placeholder = "Enter your name…";
 
   const cc = document.querySelector(".classroom-card");
   if (cc) cc.style.display = "";
 
-  const resultCard = document.getElementById("resultCard");
-  resultCard.style.display = "none";
-  setResultState(resultCard, null);
+  DOM.resultCard.style.display = "none";
+  setResultState(DOM.resultCard, null);
 
   buildClassroom(null);
 }
 
-/* -- START -- */
+/* ── START ── */
 init();
