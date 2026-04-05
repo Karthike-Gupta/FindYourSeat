@@ -9,12 +9,30 @@
     <title>Exam Seat Finder</title>
     <link rel="icon" type="image/png" href="./images/seat.png" sizes="64x64" />
     <link rel="manifest" href="./manifest.json" />
+
+    <!-- Preconnect to speed up the Google Fonts handshake -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!--
+      Non-blocking font load:
+      rel="preload" + onload swap tells the browser to fetch the font CSS
+      in the background without holding up the first paint.
+      The <noscript> fallback loads it normally when JS is disabled.
+    -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+      />
+    </noscript>
+
     <link rel="stylesheet" href="./style.css" />
     <meta name="theme-color" content="#1a1a2e" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f2ea" />
